@@ -61,9 +61,25 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QLineEdit" name="lineEditName">
+           <widget class="QLineEdit" name="lineEditAddress">
             <property name="placeholderText">
-             <string>Name</string>
+             <string>Address</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEditLat">
+            <property name="maximumSize">
+             <size>
+              <width>200</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="inputMask">
+             <string/>
+            </property>
+            <property name="placeholderText">
+             <string>Latitude</string>
             </property>
            </widget>
           </item>
@@ -87,18 +103,15 @@
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="lineEditLat">
-            <property name="maximumSize">
-             <size>
-              <width>200</width>
-              <height>16777215</height>
-             </size>
+           <widget class="QSpinBox" name="spinBoxZoom">
+            <property name="minimum">
+             <number>1</number>
             </property>
-            <property name="inputMask">
-             <string/>
+            <property name="maximum">
+             <number>19</number>
             </property>
-            <property name="placeholderText">
-             <string>Latitude</string>
+            <property name="value">
+             <number>10</number>
             </property>
            </widget>
           </item>
@@ -113,7 +126,9 @@
         </widget>
        </item>
        <item>
-        <widget class="QWidget" name="widgetMap" native="true"/>
+        <widget class="QWidget" name="widgetMap" native="true">
+         <layout class="QVBoxLayout" name="mapLayout"/>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -132,33 +147,44 @@
    <property name="nativeMenuBar">
     <bool>true</bool>
    </property>
-   <widget class="QMenu" name="menuOpen">
+   <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>File</string>
     </property>
-    <widget class="QMenu" name="menuOpen_2">
+    <widget class="QMenu" name="menuOpen">
      <property name="title">
       <string>Open</string>
      </property>
-     <addaction name="actionLocal_File_Directory_2"/>
     </widget>
     <widget class="QMenu" name="menuImport">
      <property name="title">
       <string>Import</string>
      </property>
-     <addaction name="actionMarkers"/>
-     <addaction name="actionAnnotation"/>
+     <addaction name="actionImportLocalTiles"/>
+     <addaction name="actionImportMarkers"/>
+     <addaction name="actionImportAnnotation"/>
     </widget>
-    <addaction name="menuOpen_2"/>
+    <widget class="QMenu" name="menuExport">
+     <property name="title">
+      <string>Export</string>
+     </property>
+     <addaction name="actionExportMarker"/>
+     <addaction name="actionExportAnnotaion"/>
+    </widget>
+    <addaction name="menuOpen"/>
     <addaction name="menuImport"/>
+    <addaction name="menuExport"/>
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
      <string>Tools</string>
     </property>
-    <addaction name="actionDowanload_Tiles"/>
-    <addaction name="actionGeoTiff_Maker"/>
-    <addaction name="actionDownload_Elevation"/>
+    <addaction name="actionDowanloadTiles"/>
+    <addaction name="actionGeoTiffMaker"/>
+    <addaction name="actionDownloadElevation"/>
+    <addaction name="separator"/>
+    <addaction name="actionXyzToLatLon"/>
+    <addaction name="actionLatLonToXyz"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -166,7 +192,7 @@
     </property>
     <addaction name="actionAbout"/>
    </widget>
-   <addaction name="menuOpen"/>
+   <addaction name="menuFile"/>
    <addaction name="menuTools"/>
    <addaction name="menuHelp"/>
   </widget>
@@ -200,6 +226,12 @@
     <number>1</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <property name="leftMargin">
       <number>0</number>
@@ -215,6 +247,12 @@
      </property>
      <item>
       <widget class="QTabWidget" name="tabWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="tabPosition">
         <enum>QTabWidget::North</enum>
        </property>
@@ -240,9 +278,155 @@
         <bool>false</bool>
        </property>
        <widget class="QWidget" name="tabMaps">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <attribute name="title">
          <string>Maps</string>
         </attribute>
+        <layout class="QVBoxLayout" name="verticalLayout_3">
+         <property name="spacing">
+          <number>7</number>
+         </property>
+         <property name="sizeConstraint">
+          <enum>QLayout::SetDefaultConstraint</enum>
+         </property>
+         <item>
+          <widget class="QToolBox" name="toolBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="layoutDirection">
+            <enum>Qt::LeftToRight</enum>
+           </property>
+           <property name="autoFillBackground">
+            <bool>false</bool>
+           </property>
+           <property name="frameShape">
+            <enum>QFrame::NoFrame</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Plain</enum>
+           </property>
+           <property name="currentIndex">
+            <number>1</number>
+           </property>
+           <property name="tabSpacing">
+            <number>0</number>
+           </property>
+           <widget class="QWidget" name="page">
+            <property name="geometry">
+             <rect>
+              <x>0</x>
+              <y>0</y>
+              <width>178</width>
+              <height>44</height>
+             </rect>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <attribute name="label">
+             <string>Tile Servers</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_4">
+             <item>
+              <widget class="QComboBox" name="comboBoxTileServer"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="page_2">
+            <property name="geometry">
+             <rect>
+              <x>0</x>
+              <y>0</y>
+              <width>178</width>
+              <height>123</height>
+             </rect>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <attribute name="label">
+             <string>Layers</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_6">
+             <item>
+              <widget class="QCheckBox" name="checkBoxAnnotations">
+               <property name="autoFillBackground">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>Annotaions</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+               <property name="tristate">
+                <bool>false</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="checkBoxMarkers">
+               <property name="text">
+                <string>Markers</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="checkBoxLocalTiles">
+               <property name="text">
+                <string>Local Tiles</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="checkBoxOnlineMap">
+               <property name="text">
+                <string>Online Map</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+         <item>
+          <spacer name="verticalSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
        </widget>
        <widget class="QWidget" name="tabAnnotations">
         <attribute name="title">
@@ -264,19 +448,19 @@
     <string>Layer</string>
    </property>
   </action>
-  <action name="actionDowanload_Tiles">
+  <action name="actionDowanloadTiles">
    <property name="text">
     <string>Dowanload Tiles</string>
    </property>
   </action>
-  <action name="actionGeoTiff_Maker">
+  <action name="actionGeoTiffMaker">
    <property name="text">
     <string>GeoTiff Maker</string>
    </property>
   </action>
-  <action name="actionLocal_File_Directory_2">
+  <action name="actionLocalTileDirectory">
    <property name="text">
-    <string>Local File Directory</string>
+    <string>Local Tile Directory</string>
    </property>
   </action>
   <action name="actionAbout">
@@ -284,17 +468,17 @@
     <string>About</string>
    </property>
   </action>
-  <action name="actionMarkers">
+  <action name="actionImportMarkers">
    <property name="text">
     <string>Marker</string>
    </property>
   </action>
-  <action name="actionAnnotation">
+  <action name="actionImportAnnotation">
    <property name="text">
     <string>Annotation</string>
    </property>
   </action>
-  <action name="actionDownload_Elevation">
+  <action name="actionDownloadElevation">
    <property name="text">
     <string>Download Elevation</string>
    </property>
@@ -345,6 +529,41 @@
    </property>
    <property name="toolTip">
     <string>Marker</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="text">
+    <string>Save</string>
+   </property>
+  </action>
+  <action name="actionLoad">
+   <property name="text">
+    <string>Load</string>
+   </property>
+  </action>
+  <action name="actionImportLocalTiles">
+   <property name="text">
+    <string>Local Tiles</string>
+   </property>
+  </action>
+  <action name="actionExportAnnotaion">
+   <property name="text">
+    <string>Annotaion</string>
+   </property>
+  </action>
+  <action name="actionExportMarker">
+   <property name="text">
+    <string>Marker</string>
+   </property>
+  </action>
+  <action name="actionXyzToLatLon">
+   <property name="text">
+    <string>xyz to Lat-Lon</string>
+   </property>
+  </action>
+  <action name="actionLatLonToXyz">
+   <property name="text">
+    <string>Lat-Lon to xyz</string>
    </property>
   </action>
  </widget>
