@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QMessageBox
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import QFile, QTextStream
-from widgets.map_widget import MapWidget
+from widgets.MapWidget import MapWidget
 from ui.MainWindow import Ui_MainWindow
 
 
