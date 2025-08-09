@@ -3,8 +3,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import folium
 from folium import WmsTileLayer, TileLayer
-import xyzservices as xyz
-from xyzservices import Bunch
+from folium.plugins import Draw
 
 # from pyqtlet2 import L, MapWidget as LeafletMap
 
@@ -12,30 +11,22 @@ from xyzservices import Bunch
 class MapWidget(QWidget):
 
     TMS = [
-        TileLayer(
-            tiles="Cartodb Positron",
-            overlay=False,
-            show=True
-        ), 
+        TileLayer(tiles="Cartodb Positron", overlay=False, show=True),
         TileLayer(
             tiles="OpenStreetMap",
             overlay=False,
             show=False,
         ),
-        TileLayer(
-            tiles="Cartodb dark_matter",
-            overlay=False,
-            show=False
-        )
+        TileLayer(tiles="Cartodb dark_matter", overlay=False, show=False),
     ]
 
     WMS = [
-        WmsTileLayer( # hillshade
+        WmsTileLayer(  # hillshade
             name="GMRT",
             url="https://www.gmrt.org/services/mapserver/wms_merc?request=GetCapabilities&service=WMS&version=1.3.0",
             layers="GMRT",
             fmt=None,
-            show=False
+            show=False,
         ),
     ]
 
@@ -61,15 +52,30 @@ class MapWidget(QWidget):
         map = folium.Map(tiles=None)
 
         # online tile servers
-        # local tile directory
         # DEM tiles
         [tms.add_to(map) for tms in MapWidget.TMS]
         [wms.add_to(map) for wms in MapWidget.WMS]
+        # local tile directory
+        self.local_tiles = TileLayer()
 
         folium.LayerControl().add_to(map)
         return map
 
-    def set_local_tiles(self):
+    def set_local_tiles(self, path: str):
+        """kljfds
+        
+        Parameters:
+        ---
+        path: str
+            "file:///absolute_path/{z}/{x}/{y}.png"
+
+        Returns
+        ---
+
+        Examples
+        ---
+        """
+        self.local_tiles.tiles = path
         pass
 
     def load_local_tile_layer(self, folder_path):
