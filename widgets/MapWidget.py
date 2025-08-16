@@ -4,13 +4,9 @@ from PyQt6.QtCore import QUrl
 
 import folium
 from folium import WmsTileLayer, TileLayer
-from folium.plugins import Draw
 import xyzservices
 
 from utils.server import get_free_port, TileHTTPServer
-
-
-# from pyqtlet2 import L, MapWidget as LeafletMap
 
 
 class MapWidget(QWidget):
@@ -34,52 +30,59 @@ class MapWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        tile_folder = r"D:\Robotic Perceptoin Lab\map-tile-caching\src\outputs\tiles"
-
-        # Start local tile server
-        self.port = get_free_port()
-        self.tile_server = TileHTTPServer(tile_folder, self.port)
-        self.tile_server.start()
-
-        # map
-        self.map = self.init_map()
-
-        # widgets
         self.layout = QVBoxLayout()
         self.mapWidget = QWebEngineView()
-        self.mapWidget.setHtml(self.map._repr_html_(), QUrl("http://localhost"))
         self.layout.addWidget(self.mapWidget)
         self.setLayout(self.layout)
 
-    def init_map(self):
-        # Use HTTP instead of file://
-        tile_url = f"http://localhost:{self.port}" + "/{z}/{x}/{y}.png"
+        self.tile_server = None
+        self.port = None
 
-        custom_provider = xyzservices.Bunch(
-            name="Local Tiles",
-            url=tile_url,
-            attribution="Your attribution text",
-            max_zoom=19,
-            min_zoom=17,
-        )
+        # start with default maps (no local tiles yet)
+        m = self.init_map()
+        self.mapWidget.setHtml(m._repr_html_(), QUrl("http://localhost"))
 
+    def init_map(self, local_tile_url=None):
         m = folium.Map(
             location=[37.453393341443174, 49.087650948025875],
-            # tiles=custom_provider.url,
-            # attr=custom_provider.attribution,
             zoom_start=17,
-            min_zoom=17,
+            min_zoom=2,   # allow zooming out
             max_zoom=19,
         )
 
-        TileLayer(tiles=tile_url, overlay=True, show=False, attr="Local Tile Server").add_to(m)
+        # add local tile layer if provided
+        if local_tile_url:
+            TileLayer(
+                tiles=local_tile_url,
+                overlay=True,
+                show=True,
+                attr="Local Tile Server"
+            ).add_to(m)
 
+        # always add defaults
         [tms.add_to(m) for tms in MapWidget.TMS]
         [wms.add_to(m) for wms in MapWidget.WMS]
         folium.LayerControl().add_to(m)
         return m
 
+    def load_local_tile_layer(self, folder_path):
+        """Start/Restart tile server and add it to map."""
+        # stop old server
+        if self.tile_server:
+            self.tile_server.stop()
+
+        # start new server
+        self.port = get_free_port()
+        self.tile_server = TileHTTPServer(folder_path, self.port)
+        self.tile_server.start()
+
+        tile_url = f"http://localhost:{self.port}" + "/{z}/{x}/{y}.png"
+
+        # rebuild map with local tiles + defaults
+        m = self.init_map(tile_url)
+        self.mapWidget.setHtml(m._repr_html_(), QUrl("http://localhost"))
+
     def closeEvent(self, event):
-        """Stop HTTP server when widget closes."""
-        self.tile_server.stop()
+        if self.tile_server:
+            self.tile_server.stop()
         super().closeEvent(event)
