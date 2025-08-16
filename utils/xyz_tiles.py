@@ -7,7 +7,7 @@ Using google satellite TMS "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}".
 import requests
 import os
 from threading import Thread, Semaphore
-from utils import Constants, Transforms, Formulas
+from utils.utils import Constants, Transforms, Formulas
 from PIL import Image
 import io
 

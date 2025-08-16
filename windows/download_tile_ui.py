@@ -1,18 +1,19 @@
 import sys
 import os
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QLabel, QPushButton,
+    QApplication, QDialog, QLabel, QPushButton,
     QVBoxLayout, QHBoxLayout, QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox
 )
 from PyQt6.QtCore import Qt
-from xyz_tiles import download_xyz_tiles, make_interactive_map
+from utils.xyz_tiles import download_xyz_tiles, make_interactive_map
 
 
-class TileDownloaderApp(QWidget):
-    def __init__(self):
-        super().__init__()
+class TileDownloaderDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.setWindowTitle("XYZ Tile Downloader")
         self.setMinimumWidth(500)
+        self.setFixedSize(self.sizeHint())
         self.setup_ui()
 
     def setup_ui(self):
@@ -93,10 +94,3 @@ class TileDownloaderApp(QWidget):
         make_interactive_map(folder, zoom, fmt, extent)
 
         self.status_label.setText("✅ Done! Preview generated.")
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = TileDownloaderApp()
-    window.show()
-    sys.exit(app.exec())

@@ -2,6 +2,8 @@ from PyQt6.QtWidgets import QMainWindow, QFileDialog, QMessageBox
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QFile, QTextStream, QIODevice
 from widgets.MapWidget import MapWidget
+from windows.download_tile_ui import TileDownloaderDialog   # adjust path if needed
+
 
 
 class MainWindow(QMainWindow):
@@ -24,8 +26,15 @@ class MainWindow(QMainWindow):
         self.mapLayout.addWidget(self.map_widget)
 
         self.actionImportLocalTiles.triggered.connect(self.open_local_tiles)
+        self.actionDowanloadTiles.triggered.connect(self.open_tile_downloader)
+
 
     def open_local_tiles(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Tile Folder", "")
         if folder:
             self.map_widget.load_local_tile_layer(folder)
+
+    def open_tile_downloader(self):
+        dlg = TileDownloaderDialog(self)
+        dlg.setModal(True)
+        dlg.exec()   # blocks main window until closed

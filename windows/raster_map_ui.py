@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QFileDialog, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox
 )
 
-from raster_map import merge_tiles  # ← این همون کد قبلی توئه
+from utils.raster_map import merge_tiles  # ← این همون کد قبلی توئه
 
 
 class TileMergeUI(QWidget):
