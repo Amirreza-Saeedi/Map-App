@@ -1,7 +1,7 @@
 import requests
 import os
 from threading import Thread, Semaphore
-from utils import Constants, Transforms, Formulas
+from utils.utils import Constants, Transforms, Formulas
 from PIL import Image
 import io
 import time
