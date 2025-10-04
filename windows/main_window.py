@@ -2,8 +2,8 @@ from PyQt6.QtWidgets import QMainWindow, QFileDialog, QMessageBox
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QFile, QTextStream, QIODevice
 from widgets.MapWidget import MapWidget
-from windows.download_tile_ui import TileDownloaderDialog   # adjust path if needed
-
+from windows.download_tile_ui import TileDownloaderDialog  # adjust path if needed
+from windows.download_dem_ui import DemDownloaderDialog  # add this import
 
 
 class MainWindow(QMainWindow):
@@ -17,7 +17,9 @@ class MainWindow(QMainWindow):
 
     def apply_styles(self):
         style_file = QFile("ui/style.qss")
-        if style_file.open(QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text):
+        if style_file.open(
+            QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text
+        ):
             stream = QTextStream(style_file)
             self.setStyleSheet(stream.readAll())
 
@@ -27,7 +29,7 @@ class MainWindow(QMainWindow):
 
         self.actionImportLocalTiles.triggered.connect(self.open_local_tiles)
         self.actionDowanloadTiles.triggered.connect(self.open_tile_downloader)
-
+        self.actionDownloadDEM.triggered.connect(self.open_dem_downloader)
 
     def open_local_tiles(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Tile Folder", "")
@@ -37,4 +39,9 @@ class MainWindow(QMainWindow):
     def open_tile_downloader(self):
         dlg = TileDownloaderDialog(self)
         dlg.setModal(True)
-        dlg.exec()   # blocks main window until closed
+        dlg.exec()  # blocks main window until closed
+
+    def open_dem_downloader(self):
+        dlg = DemDownloaderDialog(self)
+        dlg.setModal(True)
+        dlg.exec()

@@ -27,8 +27,13 @@ DEMTYPES = ['SRTMGL3',      'SRTMGL1',      'SRTMGL1_E',     'AW3D30',   'AW3D30
             'SRTM15Plus',   'NASADEM',      'COP30',         'COP90',    'EU_DTM', 
             'GEDI_L3',      'GEBCOIceTopo', 'GEBCOSubIceTopo']
 FORMATS = ['GTiff', 'AAIGrid', 'HFA']
+EXTENSIONS = {
+    "GTiff": "tif",
+    "AAIGrid": "asc",
+    "HFA": "img"
+}
 
-def download_dem(extent: dict, output_path: str, demtype: str, format: str):
+def download_dem(extent: dict, output_path: str, demtype: str, format: str, api_key: str):
     '''
     Downloads and saves DEMs.
     '''
@@ -38,13 +43,15 @@ def download_dem(extent: dict, output_path: str, demtype: str, format: str):
     print('URL:', url)
     response = requests.get(url)
     if response.status_code == 200:
-        file_path = output_path + f'.{format}'
+        ext = EXTENSIONS.get(format, "dat")  # fallback just in case
+        file_path = f"{output_path}.{ext}"
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "wb") as file:
             file.write(response.content)
         print(f'Downloaded: {file_path}')
     else:
         print(f'Failed to download DEM for extent: {extent}')
+        print(response)
 
 def cal_extent(tiles_path: str) -> dict:
     '''
@@ -60,17 +67,22 @@ if __name__ == '__main__':
     # extent choice:
     # 1. from existing tiles or .tif image (NOT IMPLEMENTED)
     # 2. directly input
-    w, s, e, n = 49.0757486043377469, 37.4359681305796173, 49.0967147086419615, 37.4621161195488313
+    # w, s, e, n = 54.008789, 33.760882, 60.468750, 37.286291
+    n = 37.286291
+    w = 54.008789
+    s = 33.760882
+    e = 60.468750
     extent = {'n': n, 'w': w, 's': s, 'e': e}
-    file_name = 'mydem_1km'
-    output_path = f'./outputs/{file_name}'
+    file_name = 'iran_30m'
+    output_path = f'./{file_name}'
     format_idx = 0
-    demtype_idx = -1
+    demtype_idx = 1
 
     # Main
     download_dem(
         extent=extent, 
-        output_path='./outputs/dem',
+        output_path=output_path,
         demtype=DEMTYPES[demtype_idx],
-        format=FORMATS[format_idx]
+        format=FORMATS[format_idx],
+        api_key=api_key
         )  # download DEM tiles and save

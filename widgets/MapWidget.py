@@ -15,7 +15,15 @@ class MapWidget(QWidget):
         TileLayer(tiles="Cartodb Positron", overlay=False, show=True),
         TileLayer(tiles="OpenStreetMap", overlay=False, show=False),
         TileLayer(tiles="Cartodb dark_matter", overlay=False, show=False),
+        TileLayer(
+            tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+            attr="Google Satellite",
+            name="Google Satellite",
+            overlay=False,
+            show=False
+        ),
     ]
+
 
     WMS = [
         WmsTileLayer(

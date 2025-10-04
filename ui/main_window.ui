@@ -181,7 +181,7 @@
     </property>
     <addaction name="actionDowanloadTiles"/>
     <addaction name="actionGeoTiffMaker"/>
-    <addaction name="actionDownloadElevation"/>
+    <addaction name="actionDownloadDEM"/>
     <addaction name="separator"/>
     <addaction name="actionXyzToLatLon"/>
     <addaction name="actionLatLonToXyz"/>
@@ -325,7 +325,7 @@
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>178</width>
+              <width>157</width>
               <height>44</height>
              </rect>
             </property>
@@ -478,9 +478,9 @@
     <string>Annotation</string>
    </property>
   </action>
-  <action name="actionDownloadElevation">
+  <action name="actionDownloadDEM">
    <property name="text">
-    <string>Download Elevation</string>
+    <string>Download DEM</string>
    </property>
   </action>
   <action name="actionHand">
