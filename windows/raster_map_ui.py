@@ -1,17 +1,17 @@
 import sys
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QLabel, QLineEdit,
-    QPushButton, QFileDialog, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox
+    QApplication, QDialog, QLabel, QLineEdit,
+    QPushButton, QFileDialog, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox, QDoubleSpinBox, QGroupBox
 )
 
-from utils.raster_map import merge_tiles  # ← این همون کد قبلی توئه
+from utils.raster_map import merge_tiles_bbox
 
 
-class TileMergeUI(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("XYZ Tile Merger to GeoTIFF")
-        self.setFixedWidth(500)
+class TileMergeUI(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent) 
+        self.setWindowTitle("XYZ Tile Merger to GeoTIFF (Bounding Box)")
+        self.setFixedWidth(600)
         self.setup_ui()
 
     def setup_ui(self):
@@ -36,6 +36,53 @@ class TileMergeUI(QWidget):
         output_layout.addWidget(self.output_path)
         output_layout.addWidget(output_btn)
         layout.addLayout(output_layout)
+
+        # Bounding Box Group
+        bbox_group = QGroupBox("Bounding Box Coordinates")
+        bbox_layout = QVBoxLayout()
+
+        # North Latitude
+        north_layout = QHBoxLayout()
+        self.north_lat = QDoubleSpinBox()
+        self.north_lat.setRange(-90, 90)
+        self.north_lat.setDecimals(6)
+        self.north_lat.setValue(0.0)
+        north_layout.addWidget(QLabel("North Latitude:"))
+        north_layout.addWidget(self.north_lat)
+        bbox_layout.addLayout(north_layout)
+
+        # South Latitude
+        south_layout = QHBoxLayout()
+        self.south_lat = QDoubleSpinBox()
+        self.south_lat.setRange(-90, 90)
+        self.south_lat.setDecimals(6)
+        self.south_lat.setValue(0.0)
+        south_layout.addWidget(QLabel("South Latitude:"))
+        south_layout.addWidget(self.south_lat)
+        bbox_layout.addLayout(south_layout)
+
+        # West Longitude
+        west_layout = QHBoxLayout()
+        self.west_lon = QDoubleSpinBox()
+        self.west_lon.setRange(-180, 180)
+        self.west_lon.setDecimals(6)
+        self.west_lon.setValue(0.0)
+        west_layout.addWidget(QLabel("West Longitude:"))
+        west_layout.addWidget(self.west_lon)
+        bbox_layout.addLayout(west_layout)
+
+        # East Longitude
+        east_layout = QHBoxLayout()
+        self.east_lon = QDoubleSpinBox()
+        self.east_lon.setRange(-180, 180)
+        self.east_lon.setDecimals(6)
+        self.east_lon.setValue(0.0)
+        east_layout.addWidget(QLabel("East Longitude:"))
+        east_layout.addWidget(self.east_lon)
+        bbox_layout.addLayout(east_layout)
+
+        bbox_group.setLayout(bbox_layout)
+        layout.addWidget(bbox_group)
 
         # Zoom level
         self.zoom_input = QSpinBox()
@@ -99,15 +146,35 @@ class TileMergeUI(QWidget):
         compress = self.compress_combo.currentText()
         quality = self.jpeg_quality.value()
 
+        # Get bounding box coordinates
+        north = self.north_lat.value()
+        south = self.south_lat.value()
+        west = self.west_lon.value()
+        east = self.east_lon.value()
+
         if not tile_folder or not output_tif:
             print("⚠️ Input or output path not set.")
             return
 
+        if north <= south:
+            print("⚠️ North latitude must be greater than South latitude.")
+            return
+
+        if west >= east:
+            print("⚠️ West longitude must be less than East longitude.")
+            return
+
         print("🚀 Starting merge...")
-        merge_tiles(
+        print(f"📍 Bounding Box: N={north}, S={south}, W={west}, E={east}")
+        
+        merge_tiles_bbox(
             tile_folder=tile_folder,
             output_path=output_tif,
             zoom=zoom,
+            north_lat=north,
+            south_lat=south,
+            west_lon=west,
+            east_lon=east,
             tile_size=256,
             format=fmt,
             compress_type=compress,

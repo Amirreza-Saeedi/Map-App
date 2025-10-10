@@ -1,100 +1,293 @@
-'''
-Merges xyz tiles into a single .tif image.
-'''
-
+"""
+Merges XYZ tiles within a bounding box into a single .tif image with optional GDAL compression.
+"""
 
 import os
+os.environ['PROJ_LIB'] = r"C:\Users\hasam\AppData\Local\Programs\Python\Python310\Lib\site-packages\rasterio\proj_data"
 import glob
 import numpy as np
 from PIL import Image
 import rasterio
 from rasterio.transform import from_origin
-from utils import Constants, Transforms, Formulas
+from osgeo import gdal
+from utils.utils import Constants, Transforms, Formulas
 
-def make_tif(output_tif, image, height, width, west_lon, north_lat, x_size, y_size):
-    with rasterio.open(
-        output_tif,
-        "w",
-        driver="GTiff",
-        height=height,
-        width=width,
-        count=3,  # RGB channels
-        dtype=np.uint8,
-        crs="EPSG:4326",  # Change CRS if needed
-        transform=from_origin(west_lon, north_lat, xsize=x_size, ysize=y_size),
-    ) as dst:
+
+def get_tiff_profile(height, width, transform, compress_type="jpeg", crs="EPSG:4326"):
+    """
+    Returns a rasterio profile dictionary for saving a GeoTIFF with compression.
+
+    :param height: Height in pixels
+    :param width: Width in pixels
+    :param transform: Affine transform (from_origin)
+    :param compress_type: Compression type ('jpeg', 'lzw', 'deflate', etc.)
+    :param crs: Coordinate reference system
+    :return: Dictionary of rasterio profile settings
+    """
+    profile = {
+        "driver": "GTiff",
+        "height": height,
+        "width": width,
+        "count": 3,  # RGB
+        "dtype": "uint8",
+        "crs": crs,
+        "transform": transform,
+        "tiled": True,
+    }
+
+    if compress_type and compress_type.lower() != "none":
+        profile["compress"] = compress_type
+        if compress_type == "jpeg":
+            profile["photometric"] = "ycbcr"
+
+    return profile
+
+
+def compress_with_gdal(input_tif, output_tif, compress_type="jpeg", jpeg_quality=75):
+    """
+    Recompress a GeoTIFF file using GDAL with specified compression type.
+
+    :param input_tif: Path to the original uncompressed TIFF
+    :param output_tif: Path to save the compressed TIFF
+    :param compress_type: Compression type ('jpeg', 'lzw', 'deflate', etc.)
+    :param jpeg_quality: Only used if compress_type is 'jpeg'
+    """
+    creation_options = ["TILED=YES"]
+
+    compress_type = compress_type.lower() if compress_type else "none"
+
+    if compress_type == "jpeg":
+        creation_options += [
+            "COMPRESS=JPEG",
+            "PHOTOMETRIC=YCBCR",
+            f"JPEG_QUALITY={jpeg_quality}"
+        ]
+    elif compress_type == "lzw":
+        creation_options += ["COMPRESS=LZW"]
+    elif compress_type == "deflate":
+        creation_options += ["COMPRESS=DEFLATE"]
+    elif compress_type == "none":
+        creation_options = []
+    else:
+        raise ValueError(f"❌ Unsupported compression type: {compress_type}")
+
+    gdal.Translate(
+        destName=output_tif,
+        srcDS=input_tif,
+        creationOptions=creation_options,
+        format='GTiff'
+    )
+
+    print(f"✅ Final compressed GeoTIFF saved with {compress_type.upper()} at: {output_tif}")
+
+
+def make_tif(
+    output_tif,
+    image,
+    height,
+    width,
+    west_lon,
+    north_lat,
+    x_size,
+    y_size,
+    compress_type="jpeg",
+    jpeg_quality=75,
+):
+    """
+    Saves a merged image as a compressed GeoTIFF using a dynamic profile.
+    """
+    transform = from_origin(west_lon, north_lat, xsize=x_size, ysize=y_size)
+
+    raw_output = output_tif.replace(".tif", "_raw.tif")
+    profile = get_tiff_profile(height, width, transform, compress_type=None)
+
+    with rasterio.open(raw_output, "w", **profile) as dst:
         img_array = np.array(image)
-        for i in range(3):  # Write RGB channels
+        for i in range(3):
             dst.write(img_array[:, :, i], i + 1)
 
-    print(f"TIF raster saved as: {output_tif}")
+    print(f"🧪 Temporary raw GeoTIFF saved: {raw_output}")
+
+    compress_with_gdal(raw_output, output_tif, compress_type=compress_type, jpeg_quality=jpeg_quality)
+
+    os.remove(raw_output)
 
 
-def merge_tiles(tile_folder, output_path, zoom, tile_size=256):
+def merge_tiles_bbox(
+    tile_folder,
+    output_path,
+    zoom,
+    north_lat,
+    south_lat,
+    west_lon,
+    east_lon,
+    tile_size=256,
+    format='jpeg',
+    compress_type='jpeg',
+    jpeg_quality=75
+):
     """
-    Merge the tiles and save raster image as .tif.
+    Merge XYZ tiles within a bounding box into a single georeferenced GeoTIFF.
 
-    :params tile_folder: Path to the folder containing the image tiles.
-    :params output_path: Path for the output .tif file.
-    :params tile_size: Size of individual tiles (default: 256x256 pixels).
-    :params zoom: Tiles zoom level.
+    :param tile_folder: Folder containing z/x/y tiles
+    :param output_path: Output path for merged .tif
+    :param zoom: Zoom level of tiles
+    :param north_lat: Northern boundary latitude
+    :param south_lat: Southern boundary latitude
+    :param west_lon: Western boundary longitude
+    :param east_lon: Eastern boundary longitude
+    :param tile_size: Tile pixel size (default 256)
+    :param format: 'jpeg' or 'png'
+    :param compress_type: 'jpeg', 'lzw', 'deflate', etc.
+    :param jpeg_quality: JPEG compression quality (1-100)
     """
     
-    # Find all PNG tiles
-    tile_files = glob.glob(os.path.join(tile_folder, "**/*.png"), recursive=True)
+    # Convert lat/lon bounding box to tile coordinates
+    x_min, y_north = Transforms.deg2tile(west_lon, north_lat, zoom)
+    x_max, y_south = Transforms.deg2tile(east_lon, south_lat, zoom)
     
+    # Ensure correct ordering (y increases southward in tile coordinates)
+    y_min = min(y_north, y_south)
+    y_max = max(y_north, y_south)
+    
+    print(f"📐 Tile range: X=[{x_min}, {x_max}], Y=[{y_min}, {y_max}]")
+    
+    # Find all tiles in the folder
+    tile_files = glob.glob(os.path.join(tile_folder, f"**/*.{format}"), recursive=True)
     if not tile_files:
-        print("No tiles found to merge!")
+        print("❌ No tiles found.")
         return
 
-    # Extract x and y coordinates from file paths
+    # Filter tiles within bounding box
     tile_coords = []
     for tile in tile_files:
-        parts = tile.replace("\\", "/").split("/")[-3:]  # Extract last 3 parts (zoom/x/y.png)
-        x, y = int(parts[1]), int(parts[2].split(".")[0])  # Get x and y tile indices
+        parts = tile.replace("\\", "/").split("/")[-3:]
+        try:
+            z = int(parts[0])
+            x = int(parts[1])
+            y = int(parts[2].split(".")[0])
+            
+            # Only include tiles at the correct zoom level and within bounds
+            if z == zoom and x_min <= x <= x_max and y_min <= y <= y_max:
+                tile_coords.append((x, y, tile))
+        except (ValueError, IndexError):
+            continue
+
+    if not tile_coords:
+        print(f"❌ No tiles found within bounding box at zoom level {zoom}.")
+        return
+
+    print(f"✅ Found {len(tile_coords)} tiles within bounding box.")
+
+    # Recalculate actual bounds from filtered tiles
+    actual_x_min = min(tc[0] for tc in tile_coords)
+    actual_x_max = max(tc[0] for tc in tile_coords)
+    actual_y_min = min(tc[1] for tc in tile_coords)
+    actual_y_max = max(tc[1] for tc in tile_coords)
+
+    width = (actual_x_max - actual_x_min + 1) * tile_size
+    height = (actual_y_max - actual_y_min + 1) * tile_size
+
+    # Create merged image
+    merged_image = Image.new("RGB", (width, height))
+    for x, y, file_path in tile_coords:
+        try:
+            img = Image.open(file_path)
+            x_offset = (x - actual_x_min) * tile_size
+            y_offset = (y - actual_y_min) * tile_size
+            merged_image.paste(img, (x_offset, y_offset))
+        except Exception as e:
+            print(f"⚠️ Error loading tile {file_path}: {e}")
+            continue
+
+    print('🧩 Merged image created.')
+
+    # Get geographic coordinates for the actual tile bounds
+    actual_west_lon, actual_north_lat = Transforms.tile2deg(x=actual_x_min, y=actual_y_min, z=zoom)
+    _, actual_south_lat = Transforms.tile2deg(x=actual_x_max, y=actual_y_max, z=zoom)
+    
+    center_lat = (actual_north_lat + actual_south_lat) / 2
+    x_size, y_size = Formulas.cal_pixel_size(zoom, center_lat)
+
+    make_tif(
+        output_path,
+        merged_image,
+        height,
+        width,
+        actual_west_lon,
+        actual_north_lat,
+        x_size,
+        y_size,
+        compress_type,
+        jpeg_quality
+    )
+
+
+# Original function kept for backwards compatibility
+def merge_tiles(tile_folder, output_path, zoom, tile_size=256, format='jpeg', compress_type='jpeg', jpeg_quality=75):
+    """
+    Merge ALL XYZ tiles at a zoom level into a single georeferenced GeoTIFF.
+    (Original function - merges all tiles found)
+    """
+    tile_files = glob.glob(os.path.join(tile_folder, f"**/*.{format}"), recursive=True)
+    if not tile_files:
+        print("❌ No tiles found.")
+        return
+
+    tile_coords = []
+    for tile in tile_files:
+        parts = tile.replace("\\", "/").split("/")[-3:]
+        x, y = int(parts[1]), int(parts[2].split(".")[0])
         tile_coords.append((x, y, tile))
 
-    # Get the min and max tile indices
-    x_min = tile_coords[0][0]
-    y_min = tile_coords[0][1]
-    x_max = tile_coords[-1][0]
-    y_max = tile_coords[-1][1]
+    x_min = min(tc[0] for tc in tile_coords)
+    x_max = max(tc[0] for tc in tile_coords)
+    y_min = min(tc[1] for tc in tile_coords)
+    y_max = max(tc[1] for tc in tile_coords)
 
-    # Calculate final image dimensions
     width = (x_max - x_min + 1) * tile_size
     height = (y_max - y_min + 1) * tile_size
 
-    # Create a blank canvas
     merged_image = Image.new("RGB", (width, height))
-
-    # Paste tiles into the merged image
     for x, y, file_path in tile_coords:
         img = Image.open(file_path)
         x_offset = (x - x_min) * tile_size
         y_offset = (y - y_min) * tile_size
         merged_image.paste(img, (x_offset, y_offset))
-    print('Merged image is ready.')
 
-    # TODO needed? 
-    # Save as temporary PNG before converting to .tif
-    # temp_png = "temp_merged.png"
-    # merged_image.save(temp_png)
-    # print(f'PNG created: {temp_png}.')
+    print('🧩 Merged image created.')
 
-    # Convert PNG to GeoTIFF using rasterio
     west_lon, north_lat = Transforms.tile2deg(x=x_min, y=y_min, z=zoom)
     _, south_lat = Transforms.tile2deg(x=x_max, y=y_max, z=zoom)
     center_lat = (north_lat + south_lat) / 2
     x_size, y_size = Formulas.cal_pixel_size(zoom, center_lat)
-    make_tif(output_path, image=merged_image, height=height, width=width, 
-            west_lon=west_lon, north_lat=north_lat, x_size=x_size, y_size=y_size)
+
+    make_tif(output_path, merged_image, height, width, west_lon, north_lat, x_size, y_size, compress_type, jpeg_quality)
+
 
 if __name__ == "__main__":
-    # EXAMPLE INPUT
-    # Initialize inputs
-    zoom = 14
-    tile_directory = f"./tiles/{zoom}/"  # Path where tiles are stored
-    output_raster = "./merged_raster.tif"  # Output file
-    
-    # Main
-    merge_tiles(tile_directory, output_raster, tile_size=Constants.TILE_SIZE, zoom=zoom)
+    # EXAMPLE: Merge tiles within a bounding box
+    zoom = 17
+    tile_directory = f"./tiles/{zoom}/"
+    output_raster = "./merged_raster/bbox_example.tif"
+    format = "jpeg"
+
+    # Define your bounding box (example coordinates)
+    north_lat = 35.7219
+    south_lat = 35.6895
+    west_lon = 51.3380
+    east_lon = 51.4200
+
+    merge_tiles_bbox(
+        tile_folder=tile_directory,
+        output_path=output_raster,
+        zoom=zoom,
+        north_lat=north_lat,
+        south_lat=south_lat,
+        west_lon=west_lon,
+        east_lon=east_lon,
+        tile_size=256,
+        format=format,
+        compress_type='jpeg',
+        jpeg_quality=85
+    )
