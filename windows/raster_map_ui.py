@@ -96,7 +96,7 @@ class TileMergeUI(QDialog):
 
         # Format
         self.format_combo = QComboBox()
-        self.format_combo.addItems(["jpeg", "png"])
+        self.format_combo.addItems(["jpeg", "png", "jpg"])
         format_layout = QHBoxLayout()
         format_layout.addWidget(QLabel("Tile Format:"))
         format_layout.addWidget(self.format_combo)
