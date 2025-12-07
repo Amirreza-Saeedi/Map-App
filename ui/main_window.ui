@@ -179,8 +179,22 @@
     <property name="title">
      <string>Tools</string>
     </property>
-    <addaction name="actionDowanloadTiles"/>
-    <addaction name="actionGeoTiffMaker"/>
+    <widget class="QMenu" name="menuTiles">
+     <property name="title">
+      <string>Tiles</string>
+     </property>
+     <addaction name="actionTile_Download_Extent"/>
+     <addaction name="actionTile_Download_Path"/>
+    </widget>
+    <widget class="QMenu" name="menuGeoTiff">
+     <property name="title">
+      <string>GeoTiff</string>
+     </property>
+     <addaction name="actionGeotiff_Merge_Extent"/>
+     <addaction name="actionGeotiff_Merge_Path"/>
+    </widget>
+    <addaction name="menuTiles"/>
+    <addaction name="menuGeoTiff"/>
     <addaction name="actionDownloadDEM"/>
     <addaction name="separator"/>
     <addaction name="actionXyzToLatLon"/>
@@ -325,7 +339,7 @@
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>157</width>
+              <width>178</width>
               <height>44</height>
              </rect>
             </property>
@@ -448,16 +462,6 @@
     <string>Layer</string>
    </property>
   </action>
-  <action name="actionDowanloadTiles">
-   <property name="text">
-    <string>Dowanload Tiles</string>
-   </property>
-  </action>
-  <action name="actionGeoTiffMaker">
-   <property name="text">
-    <string>GeoTiff Maker</string>
-   </property>
-  </action>
   <action name="actionLocalTileDirectory">
    <property name="text">
     <string>Local Tile Directory</string>
@@ -480,7 +484,7 @@
   </action>
   <action name="actionDownloadDEM">
    <property name="text">
-    <string>Download DEM</string>
+    <string>DEM</string>
    </property>
   </action>
   <action name="actionHand">
@@ -564,6 +568,26 @@
   <action name="actionLatLonToXyz">
    <property name="text">
     <string>Lat-Lon to xyz</string>
+   </property>
+  </action>
+  <action name="actionTile_Download_Extent">
+   <property name="text">
+    <string>Download Extent</string>
+   </property>
+  </action>
+  <action name="actionTile_Download_Path">
+   <property name="text">
+    <string>Download Path</string>
+   </property>
+  </action>
+  <action name="actionGeotiff_Merge_Extent">
+   <property name="text">
+    <string>Merge Extent</string>
+   </property>
+  </action>
+  <action name="actionGeotiff_Merge_Path">
+   <property name="text">
+    <string>Merge Path</string>
    </property>
   </action>
  </widget>

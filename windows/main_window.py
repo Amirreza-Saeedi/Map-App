@@ -5,6 +5,7 @@ from widgets.MapWidget import MapWidget
 from windows.download_tile_ui import TileDownloaderDialog  # adjust path if needed
 from windows.download_dem_ui import DemDownloaderDialog  # add this import
 from windows.raster_map_ui import TileMergeUI
+from windows.download_tile_path_ui import PathTileDownloaderDialog
 
 
 class MainWindow(QMainWindow):
@@ -29,9 +30,15 @@ class MainWindow(QMainWindow):
         self.mapLayout.addWidget(self.map_widget)
 
         self.actionImportLocalTiles.triggered.connect(self.open_local_tiles)
-        self.actionDowanloadTiles.triggered.connect(self.open_tile_downloader)
+        self.actionTile_Download_Extent.triggered.connect(self.open_tile_downloader)
+        self.actionTile_Download_Path.triggered.connect(self.open_path_tile_downloader)
         self.actionDownloadDEM.triggered.connect(self.open_dem_downloader)
-        self.actionGeoTiffMaker.triggered.connect(self.open_tif_maker)
+        self.actionGeotiff_Merge_Extent.triggered.connect(self.open_tif_maker)
+
+    def open_path_tile_downloader(self):
+        dlg = PathTileDownloaderDialog(self)
+        dlg.setModal(True)
+        dlg.exec()
 
     def open_local_tiles(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Tile Folder", "")

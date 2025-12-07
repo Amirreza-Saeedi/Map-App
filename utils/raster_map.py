@@ -3,7 +3,8 @@ Merges XYZ tiles within a bounding box into a single .tif image with optional GD
 """
 
 import os
-os.environ['PROJ_LIB'] = r"C:\Users\hasam\AppData\Local\Programs\Python\Python310\Lib\site-packages\rasterio\proj_data"
+# TODO replace with automatic dir if needed
+# os.environ['PROJ_LIB'] = r"C:\Users\hasam\AppData\Local\Programs\Python\Python310\Lib\site-packages\rasterio\proj_data"
 import glob
 import numpy as np
 from PIL import Image
