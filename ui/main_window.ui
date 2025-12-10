@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>704</width>
+    <width>888</width>
     <height>598</height>
    </rect>
   </property>
@@ -68,6 +68,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="pushButtonSearch">
+            <property name="text">
+             <string>Search</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QLineEdit" name="lineEditLat">
             <property name="maximumSize">
              <size>
@@ -103,6 +110,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="pushButton_2">
+            <property name="text">
+             <string>Go To</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QSpinBox" name="spinBoxZoom">
             <property name="minimum">
              <number>1</number>
@@ -116,9 +130,9 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="pushButtonSearch">
+           <widget class="QPushButton" name="pushButton">
             <property name="text">
-             <string>Search</string>
+             <string>Set Zoom</string>
             </property>
            </widget>
           </item>
@@ -140,7 +154,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>704</width>
+     <width>888</width>
      <height>26</height>
     </rect>
    </property>
