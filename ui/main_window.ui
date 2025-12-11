@@ -211,8 +211,7 @@
     <addaction name="menuGeoTiff"/>
     <addaction name="actionDownloadDEM"/>
     <addaction name="separator"/>
-    <addaction name="actionXyzToLatLon"/>
-    <addaction name="actionLatLonToXyz"/>
+    <addaction name="actionCoord_Transformation"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -579,9 +578,9 @@
     <string>xyz to Lat-Lon</string>
    </property>
   </action>
-  <action name="actionLatLonToXyz">
+  <action name="actionCoord_Transformation">
    <property name="text">
-    <string>Lat-Lon to xyz</string>
+    <string>Coord Transformation</string>
    </property>
   </action>
   <action name="actionTile_Download_Extent">

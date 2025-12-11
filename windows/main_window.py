@@ -14,6 +14,10 @@ from windows.download_dem_ui import DemDownloaderDialog
 from windows.raster_map_ui import TileMergeUI
 from windows.download_tile_path_ui import PathTileDownloaderDialog
 from windows.raster_map_path_ui import PathTileMergeUI
+from windows.about_ui import AboutDialog
+from windows.coord_transform_ui import CoordTransformDialog
+
+from utils.app_constants import APP_NAME, APP_VERSION
 
 
 class MainWindow(QMainWindow):
@@ -24,7 +28,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         loadUi("ui/main_window.ui", self)
-        self.setWindowTitle("Map Application")
+        self.setWindowTitle(f"{APP_NAME} v{APP_VERSION}")
         
         # Apply styles
         self._apply_styles()
@@ -97,6 +101,15 @@ class MainWindow(QMainWindow):
         # Raster operations
         self.actionGeotiff_Merge_Extent.triggered.connect(self._open_tif_maker)
         self.actionGeotiff_Merge_Path.triggered.connect(self._open_path_tif_maker)
+        # About and coordinate transform
+        try:
+            self.actionAbout.triggered.connect(self._open_about)
+        except Exception:
+            pass
+        try:
+            self.actionCoord_Transformation.triggered.connect(self._open_coord_transform)
+        except Exception:
+            pass
     
     # Menu action handlers
     
@@ -133,5 +146,15 @@ class MainWindow(QMainWindow):
     def _open_path_tif_maker(self):
         """Open GeoTIFF merger dialog (path mode)"""
         dlg = PathTileMergeUI(self)
+        dlg.setModal(True)
+        dlg.exec()
+
+    def _open_about(self):
+        dlg = AboutDialog(self)
+        dlg.setModal(True)
+        dlg.exec()
+
+    def _open_coord_transform(self):
+        dlg = CoordTransformDialog()
         dlg.setModal(True)
         dlg.exec()
