@@ -18,7 +18,7 @@ class NominatimSearchWorker(QThread):
             params = {
                 'q': self.query,
                 'format': 'json',
-                'limit': 10,  # Get top 10 results
+                'limit': 5,  # Get top 5 results
                 'addressdetails': 1
             }
             headers = {
