@@ -49,8 +49,11 @@ class MainWindow(QMainWindow):
         self.mapLayout.addWidget(self.map_widget)
     
     def _init_status_bar(self):
-        """Initialize status bar with connection display only"""
+        """Initialize status bar with connection display and coordinates"""
         self.status_manager = StatusBarManager(self.statusbar)
+        
+        # Connect map tile request signal to status bar
+        self.map_widget.tile_requested.connect(self.status_manager.update_tile_info)
     
     def _init_search(self):
         """Initialize search functionality for address and coordinates"""

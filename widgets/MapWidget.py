@@ -7,40 +7,65 @@ from folium import WmsTileLayer, TileLayer
 import json
 
 from utils.server import get_free_port, TileHTTPServer
-
 from PyQt6.QtWebEngineCore import QWebEngineUrlRequestInterceptor
 
 class TileRequestInterceptor(QWebEngineUrlRequestInterceptor):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+    
     def interceptRequest(self, info):
         url = info.requestUrl().toString()
         # Check if this is a tile request (usually ends with .png or .jpg)
         if url.endswith(".png") or url.endswith(".jpg"):
             print("Tile requested:", url)
-            # You can also extract z, x, y from URL if needed
-
-
-class MapClickHandler(QObject):
-    """Handler for map click events via WebChannel"""
-    clicked = pyqtSignal(float, float)  # lat, lon
-    zoom_changed = pyqtSignal(int)  # zoom level
+            # Extract x, y, z from the URL
+            self._extract_tile_info(url)
     
-    def __init__(self):
-        super().__init__()
-    
-    def handleClick(self, lat: float, lon: float):
-        """Called from JavaScript when map is clicked"""
-        self.clicked.emit(lat, lon)
-    
-    def handleZoomChange(self, zoom: int):
-        """Called from JavaScript when zoom changes"""
-        self.zoom_changed.emit(zoom)
+    def _extract_tile_info(self, url):
+        """Extract x, y, z from tile URL and update status bar"""
+        try:
+            # Different tile servers have different URL formats
+            # Handle OpenStreetMap format: /z/x/y.png
+            if "/tile.openstreetmap.org/" in url:
+                parts = url.split("/")
+                if len(parts) >= 5:
+                    z = int(parts[-3])
+                    x = int(parts[-2])
+                    y = int(parts[-1].split(".")[0])
+                    self.parent.tile_requested.emit(x, y, z)
+                    return
+            
+            # Handle Google format: ?x=...&y=...&z=...
+            elif "x=" in url and "y=" in url and "z=" in url:
+                import re
+                x_match = re.search(r'[?&]x=(\d+)', url)
+                y_match = re.search(r'[?&]y=(\d+)', url)
+                z_match = re.search(r'[?&]z=(\d+)', url)
+                
+                if x_match and y_match and z_match:
+                    x = int(x_match.group(1))
+                    y = int(y_match.group(1))
+                    z = int(z_match.group(1))
+                    self.parent.tile_requested.emit(x, y, z)
+                    return
+            
+            # Handle local tiles format: /z/x/y.png
+            elif "/localhost:" in url:
+                parts = url.split("/")
+                if len(parts) >= 5:
+                    z = int(parts[-3])
+                    x = int(parts[-2])
+                    y = int(parts[-1].split(".")[0])
+                    self.parent.tile_requested.emit(x, y, z)
+                    return
+        except Exception as e:
+            print(f"Error extracting tile info: {e}")
 
 
 class MapWidget(QWidget):
     # Signals
-    map_state_changed = pyqtSignal(float, float, int)  # lat, lon, zoom
-    map_clicked = pyqtSignal(float, float)  # lat, lon when user clicks map
-    zoom_changed = pyqtSignal(int)  # zoom level changed
+    tile_requested = pyqtSignal(int, int, int)  # x, y, z
 
     TMS = [
         TileLayer(
@@ -99,12 +124,6 @@ class MapWidget(QWidget):
 
         self.tile_server = None
         self.port = None
-
-        from PyQt6.QtWebEngineCore import QWebEngineProfile
-
-        self.interceptor = TileRequestInterceptor()
-        profile = self.mapWidget.page().profile()
-        profile.setUrlRequestInterceptor(self.interceptor)
         
         # Store current map state
         self.current_center = [37.453393341443174, 49.087650948025875]
@@ -117,6 +136,12 @@ class MapWidget(QWidget):
         self.click_handler.zoom_changed.connect(self.on_zoom_changed)
         self.channel.registerObject('mapHandler', self.click_handler)
         self.mapWidget.page().setWebChannel(self.channel)
+
+        # Setup URL request interceptor
+        from PyQt6.QtWebEngineCore import QWebEngineProfile
+        self.interceptor = TileRequestInterceptor(self)
+        profile = self.mapWidget.page().profile()
+        profile.setUrlRequestInterceptor(self.interceptor)
 
         # Start with default maps (no local tiles yet)
         m = self.init_map()
@@ -159,62 +184,17 @@ class MapWidget(QWidget):
         return m
     
     def load_map(self, folium_map):
-        """Load a folium map with JavaScript hooks for click and zoom events"""
+        """Load a folium map"""
         html = folium_map._repr_html_()
-        
-        # Inject JavaScript to capture map clicks and zoom changes
-        js_code = """
-        <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
-        <script>
-            // Wait for map to be ready
-            document.addEventListener('DOMContentLoaded', function() {
-                // Find the map object (Folium creates a global variable)
-                var mapElement = document.querySelector('.folium-map');
-                if (mapElement) {
-                    var mapId = mapElement.id;
-                    // Wait a bit for the map to initialize
-                    setTimeout(function() {
-                        if (window[mapId]) {
-                            var map = window[mapId];
-                            
-                            // Setup WebChannel
-                            new QWebChannel(qt.webChannelTransport, function(channel) {
-                                var mapHandler = channel.objects.mapHandler;
-                                
-                                // Capture map clicks
-                                map.on('click', function(e) {
-                                    mapHandler.handleClick(e.latlng.lat, e.latlng.lng);
-                                });
-                                
-                                // Capture zoom changes
-                                map.on('zoomend', function() {
-                                    var zoom = map.getZoom();
-                                    mapHandler.handleZoomChange(zoom);
-                                });
-                            });
-                        }
-                    }, 500);
-                }
-            });
-        </script>
-        """
-        
-        # Insert JavaScript before closing body tag
-        html = html.replace('</body>', js_code + '</body>')
-        
         self.mapWidget.setHtml(html, QUrl("http://localhost"))
     
     def on_map_clicked(self, lat, lon):
         """Handle map click events"""
         self.current_center = [lat, lon]
-        self.map_clicked.emit(lat, lon)
-        self.map_state_changed.emit(lat, lon, self.current_zoom)
-    
+
     def on_zoom_changed(self, zoom):
         """Handle zoom change events from JavaScript"""
         self.current_zoom = zoom
-        self.zoom_changed.emit(zoom)
-        self.map_state_changed.emit(self.current_center[0], self.current_center[1], zoom)
 
     def load_local_tile_layer(self, folder_path):
         """Start/Restart tile server and add it to map."""
@@ -249,9 +229,6 @@ class MapWidget(QWidget):
         
         m = self.init_map(tile_url, [lat, lon], zoom)
         self.load_map(m)
-        
-        self.map_state_changed.emit(lat, lon, zoom)
-        self.zoom_changed.emit(zoom)
 
     def set_zoom(self, zoom_level):
         """Set zoom level while keeping current center"""
@@ -264,13 +241,6 @@ class MapWidget(QWidget):
         
         m = self.init_map(tile_url, self.current_center, zoom_level)
         self.load_map(m)
-        
-        self.map_state_changed.emit(
-            self.current_center[0], 
-            self.current_center[1], 
-            zoom_level
-        )
-        self.zoom_changed.emit(zoom_level)
 
     def get_current_location(self):
         """Get current map center coordinates"""
@@ -284,3 +254,20 @@ class MapWidget(QWidget):
         if self.tile_server:
             self.tile_server.stop()
         super().closeEvent(event)
+
+
+class MapClickHandler(QObject):
+    """Handler for map click events via WebChannel"""
+    clicked = pyqtSignal(float, float)  # lat, lon
+    zoom_changed = pyqtSignal(int)  # zoom level
+    
+    def __init__(self):
+        super().__init__()
+    
+    def handleClick(self, lat: float, lon: float):
+        """Called from JavaScript when map is clicked"""
+        self.clicked.emit(lat, lon)
+    
+    def handleZoomChange(self, zoom: int):
+        """Called from JavaScript when zoom changes"""
+        self.zoom_changed.emit(zoom)
