@@ -49,15 +49,8 @@ class MainWindow(QMainWindow):
         self.mapLayout.addWidget(self.map_widget)
     
     def _init_status_bar(self):
-        """Initialize status bar with connection, coordinates, and zoom display"""
+        """Initialize status bar with connection display only"""
         self.status_manager = StatusBarManager(self.statusbar)
-        
-        # Connect map signals to status bar updates
-        self.map_widget.map_clicked.connect(self.status_manager.update_coordinates)
-        self.map_widget.zoom_changed.connect(self.status_manager.update_zoom)
-        
-        # Set initial zoom display
-        self.status_manager.update_zoom(self.map_widget.get_current_zoom())
     
     def _init_search(self):
         """Initialize search functionality for address and coordinates"""
@@ -86,11 +79,6 @@ class MainWindow(QMainWindow):
             self.map_widget.set_zoom(zoom)
         else:
             self.map_widget.go_to_location(lat, lon, zoom)
-        
-        # Update status bar
-        if lat is not None and lon is not None:
-            self.status_manager.update_coordinates(lat, lon)
-        self.status_manager.update_zoom(zoom if zoom is not None else self.map_widget.get_current_zoom())
     
     def _connect_menu_actions(self):
         """Connect all menu actions to their handlers"""

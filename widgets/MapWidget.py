@@ -12,6 +12,7 @@ from utils.server import get_free_port, TileHTTPServer
 class MapClickHandler(QObject):
     """Handler for map click events via WebChannel"""
     clicked = pyqtSignal(float, float)  # lat, lon
+    zoom_changed = pyqtSignal(int)  # zoom level
     
     def __init__(self):
         super().__init__()
@@ -19,6 +20,10 @@ class MapClickHandler(QObject):
     def handleClick(self, lat: float, lon: float):
         """Called from JavaScript when map is clicked"""
         self.clicked.emit(lat, lon)
+    
+    def handleZoomChange(self, zoom: int):
+        """Called from JavaScript when zoom changes"""
+        self.zoom_changed.emit(zoom)
 
 
 class MapWidget(QWidget):
@@ -93,6 +98,7 @@ class MapWidget(QWidget):
         self.channel = QWebChannel()
         self.click_handler = MapClickHandler()
         self.click_handler.clicked.connect(self.on_map_clicked)
+        self.click_handler.zoom_changed.connect(self.on_zoom_changed)
         self.channel.registerObject('mapHandler', self.click_handler)
         self.mapWidget.page().setWebChannel(self.channel)
 
@@ -167,8 +173,7 @@ class MapWidget(QWidget):
                                 // Capture zoom changes
                                 map.on('zoomend', function() {
                                     var zoom = map.getZoom();
-                                    // Store zoom for retrieval
-                                    window.currentZoom = zoom;
+                                    mapHandler.handleZoomChange(zoom);
                                 });
                             });
                         }
@@ -185,7 +190,15 @@ class MapWidget(QWidget):
     
     def on_map_clicked(self, lat, lon):
         """Handle map click events"""
+        self.current_center = [lat, lon]
         self.map_clicked.emit(lat, lon)
+        self.map_state_changed.emit(lat, lon, self.current_zoom)
+    
+    def on_zoom_changed(self, zoom):
+        """Handle zoom change events from JavaScript"""
+        self.current_zoom = zoom
+        self.zoom_changed.emit(zoom)
+        self.map_state_changed.emit(self.current_center[0], self.current_center[1], zoom)
 
     def load_local_tile_layer(self, folder_path):
         """Start/Restart tile server and add it to map."""
