@@ -8,6 +8,16 @@ import json
 
 from utils.server import get_free_port, TileHTTPServer
 
+from PyQt6.QtWebEngineCore import QWebEngineUrlRequestInterceptor
+
+class TileRequestInterceptor(QWebEngineUrlRequestInterceptor):
+    def interceptRequest(self, info):
+        url = info.requestUrl().toString()
+        # Check if this is a tile request (usually ends with .png or .jpg)
+        if url.endswith(".png") or url.endswith(".jpg"):
+            print("Tile requested:", url)
+            # You can also extract z, x, y from URL if needed
+
 
 class MapClickHandler(QObject):
     """Handler for map click events via WebChannel"""
@@ -89,6 +99,12 @@ class MapWidget(QWidget):
 
         self.tile_server = None
         self.port = None
+
+        from PyQt6.QtWebEngineCore import QWebEngineProfile
+
+        self.interceptor = TileRequestInterceptor()
+        profile = self.mapWidget.page().profile()
+        profile.setUrlRequestInterceptor(self.interceptor)
         
         # Store current map state
         self.current_center = [37.453393341443174, 49.087650948025875]
