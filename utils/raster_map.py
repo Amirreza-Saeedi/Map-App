@@ -288,7 +288,9 @@ def merge_tiles_path(
     tile_size=256,
     format='jpeg',
     compress_type='jpeg',
-    jpeg_quality=75
+    jpeg_quality=75,
+    progress_callback=None,
+    segment_progress_callback=None
 ):
     """
     Merge XYZ tiles along a path corridor into a single georeferenced GeoTIFF.
@@ -353,59 +355,71 @@ def merge_tiles_path(
     min_lon -= lon_buffer
     max_lon += lon_buffer
     
-    # Find all tiles in the folder
-    tile_files = glob.glob(os.path.join(tile_folder, f"**/*.{format}"), recursive=True)
-    if not tile_files:
-        print("❌ No tiles found.")
-        return
-    
-    # Filter tiles that are within the path corridor
-    tile_coords = []
-    for tile in tile_files:
-        parts = tile.replace("\\", "/").split("/")[-3:]
+    # Process each path segment and collect matching tiles (report per-segment progress)
+    tile_coords_set = {}
+    total_segments = max(1, len(points) - 1)
+
+    for seg_idx in range(len(points) - 1):
+        if segment_progress_callback:
+            segment_progress_callback(seg_idx + 1, total_segments)
+
+        lat1, lon1 = points[seg_idx]
+        lat2, lon2 = points[seg_idx + 1]
+
+        # Segment bbox
+        seg_min_lat = min(lat1, lat2)
+        seg_max_lat = max(lat1, lat2)
+        seg_min_lon = min(lon1, lon2)
+        seg_max_lon = max(lon1, lon2)
+
+        # Expand by buffer
+        avg_lat_seg = (seg_min_lat + seg_max_lat) / 2
+        km_per_deg_lat_seg = 111.0
+        km_per_deg_lon_seg = 111.0 * math.cos(math.radians(avg_lat_seg))
+
+        lat_buf_seg = buffer_width_km / km_per_deg_lat_seg
+        lon_buf_seg = buffer_width_km / km_per_deg_lon_seg
+
+        seg_min_lat -= lat_buf_seg
+        seg_max_lat += lat_buf_seg
+        seg_min_lon -= lon_buf_seg
+        seg_max_lon += lon_buf_seg
+
+        # Convert bbox to tile range
         try:
-            z = int(parts[0])
-            x = int(parts[1])
-            y = int(parts[2].split(".")[0])
-            
-            # Only process tiles at the correct zoom level
-            if z != zoom:
-                continue
-            
-            # Get tile center coordinates
-            tile_lon, tile_lat = Transforms.tile2deg(x, y, z)
-            
-            # Check if tile is within expanded bounding box
-            if not (min_lat <= tile_lat <= max_lat and min_lon <= tile_lon <= max_lon):
-                continue
-            
-            # Check distance to any path segment
-            within_buffer = False
-            for i in range(len(points) - 1):
-                lat1, lon1 = points[i]
-                lat2, lon2 = points[i + 1]
-                
-                # Calculate distance from tile center to this path segment
-                dist_deg = point_to_line_distance(
-                    tile_lat, tile_lon,
-                    lat1, lon1,
-                    lat2, lon2
-                )
-                
-                # Convert to kilometers
-                dist_km = haversine_distance(
-                    tile_lat, tile_lon,
-                    tile_lat + dist_deg, tile_lon
-                )
-                
-                if dist_km <= buffer_width_km:
-                    within_buffer = True
-                    break
-            
-            if within_buffer:
-                tile_coords.append((x, y, tile))
-        except (ValueError, IndexError):
+            start_x, start_y = Transforms.deg2tile(seg_min_lon, seg_max_lat, zoom)
+            end_x, end_y = Transforms.deg2tile(seg_max_lon, seg_min_lat, zoom)
+        except Exception:
             continue
+
+        sx, ex = sorted((start_x, end_x))
+        sy, ey = sorted((start_y, end_y))
+
+        total_checks = (ex - sx + 1) * (ey - sy + 1)
+        checked = 0
+
+        for x in range(sx, ex + 1):
+            for y in range(sy, ey + 1):
+                checked += 1
+                if progress_callback:
+                    progress_callback(checked, total_checks, f"Scanning segment {seg_idx+1}/{total_segments}: checking {checked}/{total_checks}")
+
+                file_path = os.path.join(tile_folder, f"{zoom}", f"{x}", f"{y}.{format}")
+                if not os.path.isfile(file_path):
+                    continue
+
+                # Get center and test distance to segment
+                tile_lon, tile_lat = Transforms.tile2deg(x, y, zoom)
+                dist_deg = point_to_line_distance(tile_lat, tile_lon, lat1, lon1, lat2, lon2)
+                dist_km = haversine_distance(tile_lat, tile_lon, tile_lat + dist_deg, tile_lon)
+
+                if dist_km <= buffer_width_km:
+                    key = (x, y)
+                    if key not in tile_coords_set:
+                        tile_coords_set[key] = file_path
+
+    # Convert to list
+    tile_coords = [(k[0], k[1], v) for k, v in tile_coords_set.items()]
     
     if not tile_coords:
         print(f"❌ No tiles found within path corridor at zoom level {zoom}.")
@@ -424,17 +438,25 @@ def merge_tiles_path(
     
     # Create merged image
     merged_image = Image.new("RGB", (width, height))
-    for x, y, file_path in tile_coords:
+    total_tiles = len(tile_coords)
+    if progress_callback:
+        progress_callback(0, total_tiles, "Merging tiles into image...")
+
+    for idx, (x, y, file_path) in enumerate(tile_coords, 1):
         try:
             img = Image.open(file_path)
             x_offset = (x - actual_x_min) * tile_size
             y_offset = (y - actual_y_min) * tile_size
             merged_image.paste(img, (x_offset, y_offset))
+            if progress_callback:
+                progress_callback(idx, total_tiles, f"Merging tile {idx}/{total_tiles}...")
         except Exception as e:
             print(f"⚠️ Error loading tile {file_path}: {e}")
             continue
-    
+
     print('🧩 Merged image created.')
+    if progress_callback:
+        progress_callback(total_tiles, total_tiles, "Creating GeoTIFF...")
     
     # Get geographic coordinates for the actual tile bounds
     actual_west_lon, actual_north_lat = Transforms.tile2deg(x=actual_x_min, y=actual_y_min, z=zoom)

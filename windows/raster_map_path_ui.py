@@ -13,6 +13,8 @@ from utils.raster_map import merge_tiles_path
 
 class MergeWorker(QThread):
     """Worker thread for merging tiles without blocking the GUI"""
+    progress = pyqtSignal(int, int, str)  # current, total, status
+    segment_progress = pyqtSignal(int, int)  # current segment, total segments
     finished = pyqtSignal(bool, str)  # success, message
     error = pyqtSignal(str)
     
@@ -39,7 +41,9 @@ class MergeWorker(QThread):
                 tile_size=256,
                 format=self.format_type,
                 compress_type=self.compress_type,
-                jpeg_quality=self.jpeg_quality
+                jpeg_quality=self.jpeg_quality,
+                progress_callback=self.progress.emit,
+                segment_progress_callback=self.segment_progress.emit
             )
             self.finished.emit(True, "Merge completed successfully!")
         except Exception as e:
@@ -343,6 +347,18 @@ class PathTileMergeUI(QDialog):
         self.status_label = QLabel("Ready to merge")
         progress_layout.addWidget(self.status_label)
         
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        progress_layout.addWidget(self.progress_bar)
+
+        self.segment_label = QLabel("Segment: - / -")
+        self.segment_label.setVisible(False)
+        progress_layout.addWidget(self.segment_label)
+
+        self.tiles_label = QLabel("Tiles: 0 / 0")
+        self.tiles_label.setVisible(False)
+        progress_layout.addWidget(self.tiles_label)
+        
         progress_widget.setLayout(progress_layout)
         
         # Combine right side
@@ -543,9 +559,25 @@ class PathTileMergeUI(QDialog):
             compress_type=compress,
             jpeg_quality=quality
         )
+        self.worker.progress.connect(self.on_progress)
+        self.worker.segment_progress.connect(self.on_segment_progress)
         self.worker.finished.connect(self.on_merge_finished)
         self.worker.error.connect(self.on_merge_error)
         self.worker.start()
+
+    def on_progress(self, current, total, status):
+        """Update progress bar and tiles label"""
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setMaximum(total)
+        self.progress_bar.setValue(current)
+        self.tiles_label.setVisible(True)
+        self.tiles_label.setText(f"Tiles: {current} / {total}")
+        self.status_label.setText(status)
+
+    def on_segment_progress(self, current_seg, total_seg):
+        """Update current segment label"""
+        self.segment_label.setVisible(True)
+        self.segment_label.setText(f"Segment: {current_seg} / {total_seg}")
     
     def on_merge_finished(self, success, message):
         """Handle merge completion"""

@@ -57,6 +57,22 @@ class StatusBarManager:
         self.statusbar.addPermanentWidget(self.x_label)
         self.statusbar.addPermanentWidget(self.y_label)
         self.statusbar.addPermanentWidget(self.zoom_label)
+        
+        # Rightmost fixed help icon: shows instruction on hover
+        self.help_label = QLabel("?")
+        self.help_label.setStyleSheet("""
+            QLabel {
+                padding: 4px 6px;
+                border: 1px solid #ccc;
+                border-radius: 10px;
+                font-weight: bold;
+                margin: 0 8px;
+            }
+        """)
+        self.help_label.setCursor(QCursor(Qt.CursorShape.WhatsThisCursor))
+        # Tooltip instructing user to nudge the map when coords don't update
+        self.help_label.setToolTip("Pan the map slightly to refresh the status (coords & zoom).")
+        self.statusbar.addPermanentWidget(self.help_label)
     
     def _create_clickable_label(self, text):
         """Create a clickable label with consistent styling"""
