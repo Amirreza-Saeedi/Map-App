@@ -2,7 +2,8 @@ import os
 import traceback
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QLineEdit, QPushButton,
-    QComboBox, QFileDialog, QMessageBox, QHBoxLayout, QCheckBox, QLabel, QProgressDialog
+    QComboBox, QFileDialog, QMessageBox, QHBoxLayout, QCheckBox, QLabel, QProgressDialog,
+    QGridLayout, QGroupBox, QDoubleSpinBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from utils.dem import DEMTYPES, FORMATS, DEFAULT_API_KEY, download_dem
@@ -84,15 +85,53 @@ class DemDownloaderDialog(QDialog):
         form_layout.addRow("Format:", self.format_combo)
 
 
-        # Extent fields
-        self.n_edit = QLineEdit()
-        self.s_edit = QLineEdit()
-        self.w_edit = QLineEdit()
-        self.e_edit = QLineEdit()
-        form_layout.addRow("North (lat):", self.n_edit)
-        form_layout.addRow("South (lat):", self.s_edit)
-        form_layout.addRow("West (lon):", self.w_edit)
-        form_layout.addRow("East (lon):", self.e_edit)
+        # Extent fields (directional grid inside group box)
+        self.n_edit = QDoubleSpinBox(); self.n_edit.setDecimals(6)
+        self.s_edit = QDoubleSpinBox(); self.s_edit.setDecimals(6)
+        self.w_edit = QDoubleSpinBox(); self.w_edit.setDecimals(6)
+        self.e_edit = QDoubleSpinBox(); self.e_edit.setDecimals(6)
+
+        # configure ranges
+        self.n_edit.setRange(-90, 90); self.n_edit.setSingleStep(0.0001)
+        self.s_edit.setRange(-90, 90); self.s_edit.setSingleStep(0.0001)
+        self.w_edit.setRange(-180, 180); self.w_edit.setSingleStep(0.0001)
+        self.e_edit.setRange(-180, 180); self.e_edit.setSingleStep(0.0001)
+
+        bbox_group = QGroupBox("Extent Coordinates")
+        grid = QGridLayout()
+
+        # North
+        north_box = QVBoxLayout()
+        north_box.addWidget(QLabel("North Lat", alignment=Qt.AlignmentFlag.AlignCenter))
+        north_box.addWidget(self.n_edit)
+        grid.addLayout(north_box, 0, 1)
+
+        # West
+        west_box = QVBoxLayout()
+        west_box.addWidget(QLabel("West Lon", alignment=Qt.AlignmentFlag.AlignCenter))
+        west_box.addWidget(self.w_edit)
+        grid.addLayout(west_box, 1, 0)
+
+        # Center marker
+        center_lbl = QLabel("+")
+        center_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        center_lbl.setStyleSheet("font-weight: bold; font-size: 16px; padding: 4px;")
+        grid.addWidget(center_lbl, 1, 1)
+
+        # East
+        east_box = QVBoxLayout()
+        east_box.addWidget(QLabel("East Lon", alignment=Qt.AlignmentFlag.AlignCenter))
+        east_box.addWidget(self.e_edit)
+        grid.addLayout(east_box, 1, 2)
+
+        # South
+        south_box = QVBoxLayout()
+        south_box.addWidget(QLabel("South Lat", alignment=Qt.AlignmentFlag.AlignCenter))
+        south_box.addWidget(self.s_edit)
+        grid.addLayout(south_box, 2, 1)
+
+        bbox_group.setLayout(grid)
+        form_layout.addRow(bbox_group)
 
         # Output path (directory + filename)
         self.file_edit = QLineEdit()
@@ -131,15 +170,12 @@ class DemDownloaderDialog(QDialog):
             self.file_edit.setText(path)
 
     def start_download(self):
-        try:
-            n = float(self.n_edit.text())
-            s = float(self.s_edit.text())
-            w = float(self.w_edit.text())
-            e = float(self.e_edit.text())
-            extent = {"n": n, "s": s, "w": w, "e": e}
-        except ValueError:
-            QMessageBox.critical(self, "Input Error", "Please enter valid numeric values for extent.")
-            return
+        # read extent values from spin boxes
+        n = float(self.n_edit.value())
+        s = float(self.s_edit.value())
+        w = float(self.w_edit.value())
+        e = float(self.e_edit.value())
+        extent = {"n": n, "s": s, "w": w, "e": e}
 
         output_path = self.file_edit.text().strip()
         if not output_path:

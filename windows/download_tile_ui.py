@@ -2,7 +2,7 @@ import sys
 import os
 from PyQt6.QtWidgets import (
     QApplication, QDialog, QLabel, QPushButton,
-    QVBoxLayout, QHBoxLayout, QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox, QProgressBar
+    QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, QFileDialog, QLineEdit, QSpinBox, QDoubleSpinBox, QProgressBar, QComboBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from utils.xyz_tiles import download_xyz_tiles, make_interactive_map
@@ -57,42 +57,97 @@ class TileDownloaderDialog(QDialog):
         layout = QVBoxLayout()
 
         # Extent inputs
-        self.n_input = QDoubleSpinBox(); self.n_input.setPrefix("N: "); self.n_input.setDecimals(6)
-        self.s_input = QDoubleSpinBox(); self.s_input.setPrefix("S: "); self.s_input.setDecimals(6)
-        self.e_input = QDoubleSpinBox(); self.e_input.setPrefix("E: "); self.e_input.setDecimals(6)
-        self.w_input = QDoubleSpinBox(); self.w_input.setPrefix("W: "); self.w_input.setDecimals(6)
+        self.n_input = QDoubleSpinBox(); self.n_input.setDecimals(6)
+        self.s_input = QDoubleSpinBox(); self.s_input.setDecimals(6)
+        self.e_input = QDoubleSpinBox(); self.e_input.setDecimals(6)
+        self.w_input = QDoubleSpinBox(); self.w_input.setDecimals(6)
 
-        layout.addWidget(QLabel("Extent (lat/lon):"))
-        extent_box = QHBoxLayout()
-        for inp in [self.n_input, self.s_input, self.e_input, self.w_input]:
-            inp.setRange(-180, 180); inp.setSingleStep(0.0001)
-            extent_box.addWidget(inp)
-        layout.addLayout(extent_box)
+        # Set appropriate ranges for lat/lon
+        self.n_input.setRange(-90, 90); self.n_input.setSingleStep(0.0001)
+        self.s_input.setRange(-90, 90); self.s_input.setSingleStep(0.0001)
+        self.e_input.setRange(-180, 180); self.e_input.setSingleStep(0.0001)
+        self.w_input.setRange(-180, 180); self.w_input.setSingleStep(0.0001)
 
-        # Zoom level
-        zoom_box = QHBoxLayout()
+        # Directional layout: north on top, west/center/east in middle, south at bottom
+        grid = QGridLayout()
+
+        # North (label + field) at (0,1)
+        north_layout = QVBoxLayout()
+        north_layout.addWidget(QLabel("North Lat", alignment=Qt.AlignmentFlag.AlignCenter))
+        north_layout.addWidget(self.n_input)
+        grid.addLayout(north_layout, 0, 1)
+
+        # West at (1,0)
+        west_layout = QVBoxLayout()
+        west_layout.addWidget(QLabel("West Lon", alignment=Qt.AlignmentFlag.AlignCenter))
+        west_layout.addWidget(self.w_input)
+        grid.addLayout(west_layout, 1, 0)
+
+        # Center marker
+        center_lbl = QLabel("+")
+        center_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        center_lbl.setStyleSheet("font-weight: bold; font-size: 16px; padding: 4px;")
+        grid.addWidget(center_lbl, 1, 1)
+
+        # East at (1,2)
+        east_layout = QVBoxLayout()
+        east_layout.addWidget(QLabel("East Lon", alignment=Qt.AlignmentFlag.AlignCenter))
+        east_layout.addWidget(self.e_input)
+        grid.addLayout(east_layout, 1, 2)
+
+        # South at (2,1)
+        south_layout = QVBoxLayout()
+        south_layout.addWidget(QLabel("South Lat", alignment=Qt.AlignmentFlag.AlignCenter))
+        south_layout.addWidget(self.s_input)
+        grid.addLayout(south_layout, 2, 1)
+
+        # Put grid inside a group box for clarity
+        bbox_group = QGroupBox("Extent Coordinates")
+        bbox_group.setLayout(grid)
+        layout.addWidget(bbox_group)
+
+        # Zoom level (form-like: label left, fields right)
         self.min_z = QSpinBox(); self.min_z.setRange(0, 22); self.min_z.setValue(17)
         self.max_z = QSpinBox(); self.max_z.setRange(0, 22); self.max_z.setValue(18)
-        zoom_box.addWidget(QLabel("Min Zoom")); zoom_box.addWidget(self.min_z)
-        zoom_box.addWidget(QLabel("Max Zoom")); zoom_box.addWidget(self.max_z)
-        layout.addLayout(zoom_box)
+        zoom_layout = QHBoxLayout()
+        zoom_layout.addWidget(QLabel("Zoom Levels:"))
+        zoom_layout.addWidget(QLabel("Min:"))
+        zoom_layout.addWidget(self.min_z)
+        zoom_layout.addWidget(QLabel("Max:"))
+        zoom_layout.addWidget(self.max_z)
+        layout.addLayout(zoom_layout)
+
+        # Format
+        self.format_combo = QComboBox()
+        self.format_combo.addItems(["png", "jpeg", "jpg"]) 
+        format_layout = QHBoxLayout()
+        format_layout.addWidget(QLabel("Format:"))
+        format_layout.addWidget(self.format_combo)
+        layout.addLayout(format_layout)
+
+        # Compression
+        self.compress_combo = QComboBox()
+        self.compress_combo.addItems(["jpeg", "lzw", "deflate", "none"])
+        compress_layout = QHBoxLayout()
+        compress_layout.addWidget(QLabel("Compression Type:"))
+        compress_layout.addWidget(self.compress_combo)
+        layout.addLayout(compress_layout)
+
+        # JPEG Quality
+        self.quality_input = QSpinBox(); self.quality_input.setRange(10, 100); self.quality_input.setValue(85)
+        jpeg_layout = QHBoxLayout()
+        jpeg_layout.addWidget(QLabel("JPEG Quality:"))
+        jpeg_layout.addWidget(self.quality_input)
+        layout.addLayout(jpeg_layout)
 
         # Save directory
         self.path_input = QLineEdit(); self.path_input.setPlaceholderText("Select output folder")
-        browse_btn = QPushButton("Browse")
+        browse_btn = QPushButton("Browse...")
         browse_btn.clicked.connect(self.select_directory)
         path_box = QHBoxLayout()
         path_box.addWidget(self.path_input)
         path_box.addWidget(browse_btn)
         layout.addLayout(path_box)
-
-        # Format & quality
-        self.format_input = QLineEdit("jpeg")
-        self.quality_input = QSpinBox(); self.quality_input.setRange(10, 100); self.quality_input.setValue(85)
-        fmt_box = QHBoxLayout()
-        fmt_box.addWidget(QLabel("Format (png/jpeg):")); fmt_box.addWidget(self.format_input)
-        fmt_box.addWidget(QLabel("JPEG Quality:")); fmt_box.addWidget(self.quality_input)
-        layout.addLayout(fmt_box)
 
         # Progress bar
         self.progress_bar = QProgressBar()
@@ -125,7 +180,7 @@ class TileDownloaderDialog(QDialog):
         }
         zoom = (self.min_z.value(), self.max_z.value())
         folder = self.path_input.text()
-        fmt = self.format_input.text().strip().lower()
+        fmt = self.format_combo.currentText().strip().lower()
         quality = self.quality_input.value()
 
         if not folder:

@@ -1,10 +1,10 @@
 import sys
 from PyQt6.QtWidgets import (
     QApplication, QDialog, QLabel, QLineEdit,
-    QPushButton, QFileDialog, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox, QDoubleSpinBox, QGroupBox,
+    QPushButton, QFileDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QComboBox, QSpinBox, QDoubleSpinBox, QGroupBox,
     QProgressBar
 )
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal, Qt
 
 from utils.raster_map import merge_tiles_bbox
 
@@ -64,7 +64,7 @@ class TileMergeUI(QDialog):
 
         # Input tile folder
         self.input_path = QLineEdit()
-        input_btn = QPushButton("Browse Input Folder")
+        input_btn = QPushButton("Browse...")
         input_btn.clicked.connect(self.browse_input)
         input_layout = QHBoxLayout()
         input_layout.addWidget(QLabel("Input Tiles Folder:"))
@@ -74,7 +74,7 @@ class TileMergeUI(QDialog):
 
         # Output TIFF file
         self.output_path = QLineEdit()
-        output_btn = QPushButton("Browse Output File")
+        output_btn = QPushButton("Browse...")
         output_btn.clicked.connect(self.browse_output)
         output_layout = QHBoxLayout()
         output_layout.addWidget(QLabel("Output GeoTIFF:"))
@@ -82,57 +82,58 @@ class TileMergeUI(QDialog):
         output_layout.addWidget(output_btn)
         layout.addLayout(output_layout)
 
-        # Extent Group
-        bbox_group = QGroupBox("Extent Coordinates")
-        bbox_layout = QVBoxLayout()
-
-        # North Latitude
-        north_layout = QHBoxLayout()
+        # Extent Group (directional grid)
         self.north_lat = QDoubleSpinBox()
-        self.north_lat.setRange(-90, 90)
-        self.north_lat.setDecimals(6)
-        self.north_lat.setValue(0.0)
-        north_layout.addWidget(QLabel("North Latitude:"))
-        north_layout.addWidget(self.north_lat)
-        bbox_layout.addLayout(north_layout)
-
-        # South Latitude
-        south_layout = QHBoxLayout()
         self.south_lat = QDoubleSpinBox()
-        self.south_lat.setRange(-90, 90)
-        self.south_lat.setDecimals(6)
-        self.south_lat.setValue(0.0)
-        south_layout.addWidget(QLabel("South Latitude:"))
-        south_layout.addWidget(self.south_lat)
-        bbox_layout.addLayout(south_layout)
-
-        # West Longitude
-        west_layout = QHBoxLayout()
         self.west_lon = QDoubleSpinBox()
-        self.west_lon.setRange(-180, 180)
-        self.west_lon.setDecimals(6)
-        self.west_lon.setValue(0.0)
-        west_layout.addWidget(QLabel("West Longitude:"))
-        west_layout.addWidget(self.west_lon)
-        bbox_layout.addLayout(west_layout)
-
-        # East Longitude
-        east_layout = QHBoxLayout()
         self.east_lon = QDoubleSpinBox()
-        self.east_lon.setRange(-180, 180)
-        self.east_lon.setDecimals(6)
-        self.east_lon.setValue(0.0)
-        east_layout.addWidget(QLabel("East Longitude:"))
-        east_layout.addWidget(self.east_lon)
-        bbox_layout.addLayout(east_layout)
 
-        bbox_group.setLayout(bbox_layout)
+        # Configure ranges and precision
+        self.north_lat.setRange(-90, 90); self.north_lat.setDecimals(6); self.north_lat.setSingleStep(0.0001)
+        self.south_lat.setRange(-90, 90); self.south_lat.setDecimals(6); self.south_lat.setSingleStep(0.0001)
+        self.west_lon.setRange(-180, 180); self.west_lon.setDecimals(6); self.west_lon.setSingleStep(0.0001)
+        self.east_lon.setRange(-180, 180); self.east_lon.setDecimals(6); self.east_lon.setSingleStep(0.0001)
+
+        bbox_group = QGroupBox("Extent Coordinates")
+        grid = QGridLayout()
+
+        # North (label above field)
+        north_box = QVBoxLayout()
+        north_box.addWidget(QLabel("North Lat", alignment=Qt.AlignmentFlag.AlignCenter))
+        north_box.addWidget(self.north_lat)
+        grid.addLayout(north_box, 0, 1)
+
+        # West (label above field)
+        west_box = QVBoxLayout()
+        west_box.addWidget(QLabel("West Lon", alignment=Qt.AlignmentFlag.AlignCenter))
+        west_box.addWidget(self.west_lon)
+        grid.addLayout(west_box, 1, 0)
+
+        # Center marker
+        center_lbl = QLabel("+")
+        center_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        center_lbl.setStyleSheet("font-weight: bold; font-size: 16px; padding: 4px;")
+        grid.addWidget(center_lbl, 1, 1)
+
+        # East (label above field)
+        east_box = QVBoxLayout()
+        east_box.addWidget(QLabel("East Lon", alignment=Qt.AlignmentFlag.AlignCenter))
+        east_box.addWidget(self.east_lon)
+        grid.addLayout(east_box, 1, 2)
+
+        # South (label above field)
+        south_box = QVBoxLayout()
+        south_box.addWidget(QLabel("South Lat", alignment=Qt.AlignmentFlag.AlignCenter))
+        south_box.addWidget(self.south_lat)
+        grid.addLayout(south_box, 2, 1)
+
+        bbox_group.setLayout(grid)
         layout.addWidget(bbox_group)
 
         # Zoom level
         self.zoom_input = QSpinBox()
         self.zoom_input.setMinimum(1)
-        self.zoom_input.setMaximum(22)
+        self.zoom_input.setMaximum(19)
         self.zoom_input.setValue(18)
         zoom_layout = QHBoxLayout()
         zoom_layout.addWidget(QLabel("Zoom Level:"))
