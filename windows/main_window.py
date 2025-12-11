@@ -13,6 +13,7 @@ from windows.download_tile_ui import TileDownloaderDialog
 from windows.download_dem_ui import DemDownloaderDialog
 from windows.raster_map_ui import TileMergeUI
 from windows.download_tile_path_ui import PathTileDownloaderDialog
+from windows.raster_map_path_ui import PathTileMergeUI
 
 
 class MainWindow(QMainWindow):
@@ -95,6 +96,7 @@ class MainWindow(QMainWindow):
         
         # Raster operations
         self.actionGeotiff_Merge_Extent.triggered.connect(self._open_tif_maker)
+        self.actionGeotiff_Merge_Path.triggered.connect(self._open_path_tif_maker)
     
     # Menu action handlers
     
@@ -125,5 +127,11 @@ class MainWindow(QMainWindow):
     def _open_tif_maker(self):
         """Open GeoTIFF merger dialog"""
         dlg = TileMergeUI(self)
+        dlg.setModal(True)
+        dlg.exec()
+    
+    def _open_path_tif_maker(self):
+        """Open GeoTIFF merger dialog (path mode)"""
+        dlg = PathTileMergeUI(self)
         dlg.setModal(True)
         dlg.exec()
