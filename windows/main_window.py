@@ -24,7 +24,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         loadUi("ui/main_window.ui", self)
-        self.setWindowTitle("Python Map GUI")
+        self.setWindowTitle("Map Application")
         
         # Apply styles
         self._apply_styles()

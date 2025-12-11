@@ -19,7 +19,7 @@ class TileRequestInterceptor(QWebEngineUrlRequestInterceptor):
         # Check if this is a tile request (usually ends with .png or .jpg)
         if url.endswith(".png") or url.endswith(".jpg"):
             # Print debug info
-            # print("Tile requested:", url)
+            print("Tile requested:", url)
             # Extract x, y, z from the URL
             self._extract_tile_info(url)
     

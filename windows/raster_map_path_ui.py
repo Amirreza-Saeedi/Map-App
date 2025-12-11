@@ -318,7 +318,7 @@ class PathTileMergeUI(QDialog):
         
         # Tile Format
         self.format_combo = QComboBox()
-        self.format_combo.addItems(["jpeg", "png", "jpg"])
+        self.format_combo.addItems(["png", "jpeg", "jpg"])
         self.format_combo.currentTextChanged.connect(self.on_format_changed)
         right_layout.addRow("Tile Format:", self.format_combo)
         

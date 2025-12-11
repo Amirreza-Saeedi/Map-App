@@ -1,17 +1,62 @@
 import sys
 from PyQt6.QtWidgets import (
     QApplication, QDialog, QLabel, QLineEdit,
-    QPushButton, QFileDialog, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox, QDoubleSpinBox, QGroupBox
+    QPushButton, QFileDialog, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox, QDoubleSpinBox, QGroupBox,
+    QProgressBar
 )
+from PyQt6.QtCore import QThread, pyqtSignal
 
 from utils.raster_map import merge_tiles_bbox
+
+
+class MergeWorker(QThread):
+    """Worker thread for merging tiles without blocking the GUI"""
+    progress = pyqtSignal(int, int, str)  # current, total, status
+    finished = pyqtSignal(bool, str)  # success, message
+    error = pyqtSignal(str)
+    
+    def __init__(self, tile_folder, output_tif, zoom, north, south, west, east,
+                 fmt, compress, quality):
+        super().__init__()
+        self.tile_folder = tile_folder
+        self.output_tif = output_tif
+        self.zoom = zoom
+        self.north = north
+        self.south = south
+        self.west = west
+        self.east = east
+        self.fmt = fmt
+        self.compress = compress
+        self.quality = quality
+    
+    def run(self):
+        try:
+            merge_tiles_bbox(
+                tile_folder=self.tile_folder,
+                output_path=self.output_tif,
+                zoom=self.zoom,
+                north_lat=self.north,
+                south_lat=self.south,
+                west_lon=self.west,
+                east_lon=self.east,
+                tile_size=256,
+                format=self.fmt,
+                compress_type=self.compress,
+                jpeg_quality=self.quality,
+                progress_callback=self.progress.emit
+            )
+            self.finished.emit(True, "Merge completed successfully!")
+        except Exception as e:
+            self.error.emit(str(e))
+            self.finished.emit(False, f"Error: {str(e)}")
 
 
 class TileMergeUI(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent) 
-        self.setWindowTitle("XYZ Tile Merger to GeoTIFF (Bounding Box)")
+        self.setWindowTitle("XYZ Tile Merger to GeoTIFF (Extent)")
         self.setFixedWidth(600)
+        self.worker = None
         self.setup_ui()
 
     def setup_ui(self):
@@ -37,8 +82,8 @@ class TileMergeUI(QDialog):
         output_layout.addWidget(output_btn)
         layout.addLayout(output_layout)
 
-        # Bounding Box Group
-        bbox_group = QGroupBox("Bounding Box Coordinates")
+        # Extent Group
+        bbox_group = QGroupBox("Extent Coordinates")
         bbox_layout = QVBoxLayout()
 
         # North Latitude
@@ -96,7 +141,7 @@ class TileMergeUI(QDialog):
 
         # Format
         self.format_combo = QComboBox()
-        self.format_combo.addItems(["jpeg", "png", "jpg"])
+        self.format_combo.addItems(["png", "jpeg", "jpg"])
         format_layout = QHBoxLayout()
         format_layout.addWidget(QLabel("Tile Format:"))
         format_layout.addWidget(self.format_combo)
@@ -119,10 +164,28 @@ class TileMergeUI(QDialog):
         jpeg_layout.addWidget(self.jpeg_quality)
         layout.addLayout(jpeg_layout)
 
+        # Progress section
+        progress_group = QGroupBox("Merge Progress")
+        progress_layout = QVBoxLayout()
+        
+        self.status_label = QLabel("Ready to merge")
+        progress_layout.addWidget(self.status_label)
+        
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        progress_layout.addWidget(self.progress_bar)
+        
+        self.tiles_label = QLabel("Tiles: 0 / 0")
+        self.tiles_label.setVisible(False)
+        progress_layout.addWidget(self.tiles_label)
+        
+        progress_group.setLayout(progress_layout)
+        layout.addWidget(progress_group)
+
         # Run button
-        run_btn = QPushButton("Merge Tiles")
-        run_btn.clicked.connect(self.run_merge)
-        layout.addWidget(run_btn)
+        self.run_btn = QPushButton("Merge Tiles")
+        self.run_btn.clicked.connect(self.run_merge)
+        layout.addWidget(self.run_btn)
 
         self.setLayout(layout)
 
@@ -146,41 +209,72 @@ class TileMergeUI(QDialog):
         compress = self.compress_combo.currentText()
         quality = self.jpeg_quality.value()
 
-        # Get bounding box coordinates
+        # Get extent coordinates
         north = self.north_lat.value()
         south = self.south_lat.value()
         west = self.west_lon.value()
         east = self.east_lon.value()
 
         if not tile_folder or not output_tif:
-            print("⚠️ Input or output path not set.")
+            self.status_label.setText("⚠️ Input or output path not set.")
             return
 
         if north <= south:
-            print("⚠️ North latitude must be greater than South latitude.")
+            self.status_label.setText("⚠️ North latitude must be greater than South latitude.")
             return
 
         if west >= east:
-            print("⚠️ West longitude must be less than East longitude.")
+            self.status_label.setText("⚠️ West longitude must be less than East longitude.")
             return
 
-        print("🚀 Starting merge...")
-        print(f"📍 Bounding Box: N={north}, S={south}, W={west}, E={east}")
+        # Disable button and show progress
+        self.run_btn.setEnabled(False)
+        self.progress_bar.setVisible(True)
+        self.tiles_label.setVisible(True)
+        self.status_label.setText("🚀 Starting merge...")
         
-        merge_tiles_bbox(
+        print("🚀 Starting merge...")
+        print(f"📍 Extent: N={north}, S={south}, W={west}, E={east}")
+        
+        # Create and start worker thread
+        self.worker = MergeWorker(
             tile_folder=tile_folder,
-            output_path=output_tif,
+            output_tif=output_tif,
             zoom=zoom,
-            north_lat=north,
-            south_lat=south,
-            west_lon=west,
-            east_lon=east,
-            tile_size=256,
-            format=fmt,
-            compress_type=compress,
-            jpeg_quality=quality
+            north=north,
+            south=south,
+            west=west,
+            east=east,
+            fmt=fmt,
+            compress=compress,
+            quality=quality
         )
-        print("✅ Merge complete.")
+        self.worker.progress.connect(self.on_progress)
+        self.worker.finished.connect(self.on_finished)
+        self.worker.error.connect(self.on_error)
+        self.worker.start()
+    
+    def on_progress(self, current, total, status):
+        """Update progress bar and status"""
+        self.progress_bar.setMaximum(total)
+        self.progress_bar.setValue(current)
+        self.tiles_label.setText(f"Tiles: {current} / {total}")
+        self.status_label.setText(status)
+    
+    def on_finished(self, success, message):
+        """Handle merge completion"""
+        self.run_btn.setEnabled(True)
+        self.status_label.setText(message)
+        if success:
+            print("✅ Merge complete.")
+        else:
+            print(f"❌ {message}")
+    
+    def on_error(self, error_msg):
+        """Handle merge error"""
+        self.run_btn.setEnabled(True)
+        self.status_label.setText(f"❌ Error: {error_msg}")
+        print(f"❌ Error: {error_msg}")
 
 
 if __name__ == '__main__':

@@ -125,7 +125,8 @@ def merge_tiles_bbox(
     tile_size=256,
     format='jpeg',
     compress_type='jpeg',
-    jpeg_quality=75
+    jpeg_quality=75,
+    progress_callback=None
 ):
     """
     Merge XYZ tiles within a bounding box into a single georeferenced GeoTIFF.
@@ -141,6 +142,7 @@ def merge_tiles_bbox(
     :param format: 'jpeg' or 'png'
     :param compress_type: 'jpeg', 'lzw', 'deflate', etc.
     :param jpeg_quality: JPEG compression quality (1-100)
+    :param progress_callback: Optional callback function(current, total, status)
     """
     
     # Convert lat/lon bounding box to tile coordinates
@@ -191,17 +193,28 @@ def merge_tiles_bbox(
 
     # Create merged image
     merged_image = Image.new("RGB", (width, height))
-    for x, y, file_path in tile_coords:
+    total_tiles = len(tile_coords)
+    
+    if progress_callback:
+        progress_callback(0, total_tiles, "Loading tiles...")
+    
+    for idx, (x, y, file_path) in enumerate(tile_coords, 1):
         try:
             img = Image.open(file_path)
             x_offset = (x - actual_x_min) * tile_size
             y_offset = (y - actual_y_min) * tile_size
             merged_image.paste(img, (x_offset, y_offset))
+            
+            if progress_callback:
+                progress_callback(idx, total_tiles, f"Loading tile {idx}/{total_tiles}...")
         except Exception as e:
             print(f"⚠️ Error loading tile {file_path}: {e}")
             continue
 
     print('🧩 Merged image created.')
+    
+    if progress_callback:
+        progress_callback(total_tiles, total_tiles, "Creating GeoTIFF...")
 
     # Get geographic coordinates for the actual tile bounds
     actual_west_lon, actual_north_lat = Transforms.tile2deg(x=actual_x_min, y=actual_y_min, z=zoom)
