@@ -29,15 +29,28 @@ class MapWidget(QWidget):
 
     TMS = [
         TileLayer(
-            tiles="Cartodb Positron",
-            name="Light",
-            overlay=False,
+            tiles="OpenStreetMap", 
+            overlay=False, 
             show=True,
             max_zoom=19,
             max_native_zoom=19
         ),
-        TileLayer(tiles="OpenStreetMap", overlay=False, show=False),
-        TileLayer(tiles="Cartodb dark_matter", overlay=False, show=False, name="Dark"),
+        TileLayer(
+            tiles="Cartodb Positron",
+            name="Light",
+            overlay=False,
+            show=False,
+            max_zoom=19,
+            max_native_zoom=19
+        ),
+        TileLayer(
+            tiles="Cartodb dark_matter",
+            name="Dark",
+            overlay=False,
+            show=False,
+            max_zoom=19,
+            max_native_zoom=19
+        ),
         TileLayer(
             tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
             attr="Google Satellite",
@@ -57,6 +70,7 @@ class MapWidget(QWidget):
             fmt=None,
             show=False,
             max_zoom=19,
+            max_native_zoom=19
         ),
     ]
 
