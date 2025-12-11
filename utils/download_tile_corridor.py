@@ -108,13 +108,13 @@ def download_tile(x, y, zoom, save_path, quality1=75, timeout=10, allow_overwrit
         thread_limiter.release()
 
 
-def haversine_distance(lon1, lat1, lon2, lat2):
+def haversine_distance(lat1, lon1, lat2, lon2):
     """
     Calculate the great circle distance in kilometers between two points 
     on the earth (specified in decimal degrees)
     """
     # Convert decimal degrees to radians
-    lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
     
     # Haversine formula
     dlon = lon2 - lon1
@@ -158,8 +158,8 @@ def download_path_tiles(point1: tuple[float, float], point2: tuple[float, float]
     Downloads XYZ tiles along a path between two points with a buffer zone.
     
     Args:
-        point1: tuple (lon, lat) for the first point
-        point2: tuple (lon, lat) for the second point
+        point1: tuple (lat, lon) for the first point
+        point2: tuple (lat, lon) for the second point
         buffer_width_km: buffer width in kilometers on each side of the path
         zoom: tuple (min_zoom, max_zoom)
         save_path: root directory to save tiles
@@ -176,14 +176,14 @@ def download_path_tiles(point1: tuple[float, float], point2: tuple[float, float]
     min_z, max_z = zoom
     missed: list[tuple] = []
     
-    lon1, lat1 = point1
-    lon2, lat2 = point2
+    lat1, lon1 = point1
+    lat2, lon2 = point2
     
     # Calculate bounding box for the entire path
-    min_lon = min(lon1, lon2)
-    max_lon = max(lon1, lon2)
     min_lat = min(lat1, lat2)
     max_lat = max(lat1, lat2)
+    min_lon = min(lon1, lon2)
+    max_lon = max(lon1, lon2)
     
     # Expand bounding box by buffer (rough approximation)
     # 1 degree latitude ≈ 111 km
@@ -195,10 +195,10 @@ def download_path_tiles(point1: tuple[float, float], point2: tuple[float, float]
     lat_buffer = buffer_width_km / km_per_deg_lat
     lon_buffer = buffer_width_km / km_per_deg_lon
     
-    min_lon -= lon_buffer
-    max_lon += lon_buffer
     min_lat -= lat_buffer
     max_lat += lat_buffer
+    min_lon -= lon_buffer
+    max_lon += lon_buffer
     
     # Calculate tiles and filter by distance to path
     tiles_to_download = []
@@ -219,15 +219,15 @@ def download_path_tiles(point1: tuple[float, float], point2: tuple[float, float]
                 
                 # Calculate distance from tile center to the path line
                 dist_deg = point_to_line_distance(
-                    tile_lon, tile_lat, 
-                    lon1, lat1, 
-                    lon2, lat2
+                    tile_lat, tile_lon, 
+                    lat1, lon1, 
+                    lat2, lon2
                 )
                 
                 # Convert distance to kilometers (approximate)
                 dist_km = haversine_distance(
-                    tile_lon, tile_lat,
-                    tile_lon + dist_deg, tile_lat
+                    tile_lat, tile_lon,
+                    tile_lat + dist_deg, tile_lon
                 )
                 
                 # Include tile if within buffer distance
@@ -245,7 +245,7 @@ def download_path_tiles(point1: tuple[float, float], point2: tuple[float, float]
         progress_callback(0, total_tiles)
     
     print(f"Total tiles to process: {total_tiles}")
-    print(f"Path from ({lon1}, {lat1}) to ({lon2}, {lat2})")
+    print(f"Path from ({lat1}, {lon1}) to ({lat2}, {lon2})")
     print(f"Buffer width: {buffer_width_km} km")
 
     for z, x, y in tiles_to_download:
@@ -290,8 +290,8 @@ def download_path_tiles(point1: tuple[float, float], point2: tuple[float, float]
 # Example usage
 if __name__ == '__main__':
     # Example: Path from one point to another
-    point1 = (59.50376, 36.29510)  # (lon, lat)
-    point2 = (59.54792, 36.32398)  # (lon, lat)
+    point1 = (36.29510, 59.50376)  # (lat, lon)
+    point2 = (36.32398, 59.54792)  # (lat, lon)
     
     buffer_width_km = 1.0  # 2 km buffer on each side of the path
     zoom = (19, 19)
