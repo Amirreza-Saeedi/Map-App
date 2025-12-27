@@ -184,13 +184,15 @@ The application provides a graphical interface that allows users to:
 
 ---
 
-## Future Improvements (Issues & Suggestions)
+## Future Improvements
 
-* Support for additional DEM providers
-* Caching and resume support for interrupted downloads
-* Advanced CRS (projection) support beyond EPSG:4326
-* Export options for additional raster formats
-* Performance optimizations for very large datasets
+* **DEM Merging:** Ability to merge multiple downloaded DEM files to cover large areas beyond single-request limits.
+* **GeoTIFF Memory Optimization:** Improve GeoTIFF generation to reduce excessive RAM and disk usage during intermediate processing.
+* **DEM Visualization:** Add native visualization of downloaded DEMs within the application without relying on external GIS software.
+* **Markers & Annotations:** Support adding, managing, and exporting markers and annotations directly on the map.
+* **Layer Management:** Introduce a dedicated layer manager to control visibility, order, and editing of map layers and overlays.
+* **Real-Time Coordinates:** Display real-time mouse or map-center coordinates and accurately update zoom level information.
+* **No-Console EXE Issues:** Resolve functionality issues (e.g., local tile server) in the no-console executable build.
 
 ---
 
