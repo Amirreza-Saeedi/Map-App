@@ -1,3 +1,6 @@
 __pycache__
 .vscode
 .venv
+main.spec
+build/
+dist/

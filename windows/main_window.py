@@ -4,6 +4,8 @@ Main Window - High-level orchestration of the application
 from PyQt6.QtWidgets import QMainWindow, QFileDialog
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QFile, QTextStream, QIODevice
+import sys
+import os
 
 from widgets.MapWidget import MapWidget
 from widgets.StatusBarManager import StatusBarManager
@@ -27,7 +29,12 @@ class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        loadUi("ui/main_window.ui", self)
+        # Determine the correct path to the .ui file for both dev and PyInstaller bundle for building exe
+        if hasattr(sys, '_MEIPASS'):
+            ui_path = os.path.join(sys._MEIPASS, 'ui', 'main_window.ui')
+        else:
+            ui_path = os.path.join('ui', 'main_window.ui')
+        loadUi(ui_path, self)
         self.setWindowTitle(f"{APP_NAME} v{APP_VERSION}")
         
         # Apply styles
